@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="VITA Dairy — Kosovo's first UHT milk. Fresh from nature, trusted every day. Discover our range of milk, yogurt, ayran, clabber, cheese, cream, and schmand.">
+<meta name="theme-color" content="#0057B8">
+<title>VITA Dairy — Fresh From Nature. Trusted Every Day.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   VITA DAIRY — Premium Brand Website
+   Clean, fresh, dairy-inspired. Blue + white.
+   ============================================ */
+
+:root {
+  --blue-primary: #0057B8;
+  --blue-secondary: #4A90E2;
+  --blue-light: #EAF4FF;
+  --blue-dark: #123A6F;
+  --gray-light: #F7F9FC;
+  --white: #FFFFFF;
+  --text-primary: #123A6F;
+  --text-secondary: rgba(18,58,111,0.65);
+  --text-tertiary: rgba(18,58,111,0.4);
+  --text-on-dark: #FFFFFF;
+  --text-on-dark-dim: rgba(255,255,255,0.7);
+  --border-subtle: rgba(18,58,111,0.08);
+  --border-soft: rgba(18,58,111,0.15);
+  --font-display: 'Inter Tight', sans-serif;
+  --font-body: 'Manrope', sans-serif;
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-xl: 36px;
+  --ease-out: cubic-bezier(0.19, 1, 0.22, 1);
+  --section-pad: clamp(5rem, 12vw, 10rem);
+  --container: 90rem;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body { background: var(--white); color: var(--text-primary); font-family: var(--font-body); line-height: 1.6; overflow-x: hidden; }
+img { max-width: 100%; display: block; }
+a { color: inherit; text-decoration: none; }
+button { border: none; background: none; cursor: pointer; font-family: inherit; color: inherit; }
+ul { list-style: none; }
+
+::selection { background: var(--blue-primary); color: var(--white); }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--gray-light); }
+::-webkit-scrollbar-thumb { background: rgba(0,87,184,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,87,184,0.4); }
+
+/* ============================================
+   NAVIGATION
+   ============================================ */
+.nav { position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; padding: 1.5rem 2.5rem; transition: all 0.4s var(--ease-out); display: flex; align-items: center; justify-content: space-between; }
+.nav.scrolled { background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 0.9rem 2.5rem; border-bottom: 1px solid var(--border-subtle); box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
+.nav__logo { display: flex; align-items: center; gap: 0.75rem; font-family: var(--font-display); font-weight: 700; font-size: 1.35rem; letter-spacing: -0.02em; color: var(--white); transition: color 0.4s; }
+.nav.scrolled .nav__logo { color: var(--blue-dark); }
+.nav__logo-mark { width: 38px; height: 38px; background: var(--white); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+.nav__logo-mark img { width: 28px; height: 28px; object-fit: contain; }
+.nav__links { display: flex; gap: 2.5rem; align-items: center; }
+.nav__link { font-size: 0.85rem; font-weight: 500; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-on-dark-dim); transition: color 0.3s; position: relative; }
+.nav.scrolled .nav__link { color: var(--text-secondary); }
+.nav__link::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 1.5px; background: var(--blue-primary); transition: width 0.3s var(--ease-out); }
+.nav__link:hover { color: var(--white); }
+.nav.scrolled .nav__link:hover { color: var(--blue-primary); }
+.nav__link:hover::after { width: 100%; }
+.nav__actions { display: flex; gap: 1rem; align-items: center; }
+.nav__lang { font-size: 0.8rem; font-weight: 600; padding: 0.4rem 0.75rem; border: 1px solid rgba(255,255,255,0.25); border-radius: 100px; color: var(--text-on-dark-dim); transition: all 0.3s; }
+.nav.scrolled .nav__lang { border-color: var(--border-soft); color: var(--text-secondary); }
+.nav__lang:hover { border-color: var(--white); color: var(--white); }
+.nav.scrolled .nav__lang:hover { border-color: var(--blue-primary); color: var(--blue-primary); }
+.nav__cta { font-size: 0.8rem; font-weight: 600; padding: 0.55rem 1.35rem; background: var(--white); color: var(--blue-primary); border-radius: 100px; text-transform: uppercase; letter-spacing: 0.03em; transition: all 0.3s var(--ease-out); }
+.nav__cta:hover { background: var(--blue-light); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,87,184,0.15); }
+.nav__hamburger { display: none; flex-direction: column; gap: 4px; padding: 8px; }
+.nav__hamburger span { width: 22px; height: 2px; background: var(--white); border-radius: 2px; transition: all 0.3s var(--ease-out); }
+.nav.scrolled .nav__hamburger span { background: var(--blue-dark); }
+
+/* Mobile nav */
+.mobile-nav { position: fixed; inset: 0; z-index: 999; background: rgba(255,255,255,0.98); backdrop-filter: blur(30px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rem; opacity: 0; pointer-events: none; transition: opacity 0.4s var(--ease-out); }
+.mobile-nav.open { opacity: 1; pointer-events: auto; }
+.mobile-nav__link { font-family: var(--font-display); font-size: 2rem; font-weight: 600; letter-spacing: -0.02em; color: var(--text-secondary); transition: color 0.3s; }
+.mobile-nav__link:hover { color: var(--blue-primary); }
+
+/* ============================================
+   HERO
+   ============================================ */
+.hero { position: relative; height: 100vh; min-height: 700px; display: flex; align-items: center; overflow: hidden; background: var(--blue-dark); }
+.hero__bg { position: absolute; inset: 0; }
+.hero__bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(18,58,111,0.25) 0%, rgba(18,58,111,0.4) 60%, rgba(18,58,111,0.9) 100%); }
+.hero__bg-img { width: 100%; height: 100%; object-fit: cover; }
+.hero__content { position: relative; z-index: 2; padding: 0 2.5rem; max-width: var(--container); margin: 0 auto; width: 100%; padding-top: 6rem; }
+.hero__eyebrow { font-family: var(--font-body); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: rgba(255,255,255,0.85); margin-bottom: 1.5rem; opacity: 0; animation: fadeUp 1s 0.3s var(--ease-out) forwards; }
+.hero__title { font-family: var(--font-display); font-size: clamp(3.5rem, 8vw, 7rem); font-weight: 700; line-height: 0.95; letter-spacing: -0.03em; color: var(--white); max-width: 10ch; }
+.hero__title-line { display: block; overflow: hidden; }
+.hero__title-line span { display: block; opacity: 0; animation: revealText 1s var(--ease-out) forwards; }
+.hero__title-line:nth-child(1) span { animation-delay: 0.5s; }
+.hero__title-line:nth-child(2) span { animation-delay: 0.7s; }
+.hero__desc { font-size: clamp(1rem, 1.5vw, 1.2rem); color: var(--text-on-dark-dim); max-width: 32rem; margin-top: 2rem; line-height: 1.7; opacity: 0; animation: fadeUp 1s 1s var(--ease-out) forwards; }
+.hero__actions { display: flex; gap: 1rem; margin-top: 2.5rem; flex-wrap: wrap; opacity: 0; animation: fadeUp 1s 1.2s var(--ease-out) forwards; }
+.btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-body); font-size: 0.85rem; font-weight: 600; padding: 0.85rem 2rem; border-radius: 100px; letter-spacing: 0.02em; transition: all 0.4s var(--ease-out); text-transform: uppercase; }
+.btn--primary { background: var(--white); color: var(--blue-primary); }
+.btn--primary:hover { background: var(--blue-light); transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,87,184,0.2); }
+.btn--ghost { border: 1.5px solid rgba(255,255,255,0.3); color: var(--white); }
+.btn--ghost:hover { border-color: var(--white); background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+.hero__scroll { position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%); z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; opacity: 0; animation: fadeUp 1s 1.5s var(--ease-out) forwards; }
+.hero__scroll-text { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.5); }
+.hero__scroll-line { width: 1px; height: 40px; background: linear-gradient(to bottom, rgba(255,255,255,0.5), transparent); animation: scrollPulse 2s ease-in-out infinite; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes revealText { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scrollPulse { 0%, 100% { opacity: 0.4; transform: scaleY(0.8); } 50% { opacity: 1; transform: scaleY(1); } }
+
+/* ============================================
+   SECTION
+   ============================================ */
+.section { padding: var(--section-pad) 2.5rem; }
+.section--alt { background: var(--gray-light); }
+.section__inner { max-width: var(--container); margin: 0 auto; }
+.section__eyebrow { font-family: var(--font-body); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: var(--blue-primary); margin-bottom: 1rem; }
+.section__title { font-family: var(--font-display); font-size: clamp(2.2rem, 5vw, 4rem); font-weight: 700; line-height: 1.05; letter-spacing: -0.025em; margin-bottom: 1.5rem; color: var(--blue-dark); }
+.section__desc { font-size: 1.05rem; color: var(--text-secondary); max-width: 36rem; line-height: 1.75; }
+
+/* ============================================
+   REVEAL
+   ============================================ */
+.reveal { opacity: 0; transform: translateY(40px); transition: all 0.9s var(--ease-out); }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal--delay-1 { transition-delay: 0.1s; }
+.reveal--delay-2 { transition-delay: 0.2s; }
+.reveal--delay-3 { transition-delay: 0.3s; }
+.reveal--delay-4 { transition-delay: 0.4s; }
+
+/* ============================================
+   ABOUT
+   ============================================ */
+.about__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; margin-top: 4rem; }
+.about__image-wrap { position: relative; border-radius: var(--radius-lg); overflow: hidden; }
+.about__image-wrap img { width: 100%; height: 560px; object-fit: cover; display: block; }
+.about__image-wrap::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 60%, rgba(18,58,111,0.3) 100%); }
+.about__content { display: flex; flex-direction: column; gap: 1.5rem; }
+.about__stat { font-family: var(--font-display); font-size: 3.5rem; font-weight: 700; letter-spacing: -0.03em; color: var(--blue-primary); line-height: 1; }
+.about__stat-label { font-family: var(--font-body); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 0.3rem; }
+.about__text { font-size: 1.05rem; color: var(--text-secondary); line-height: 1.8; }
+.about__quote { padding-left: 1.5rem; border-left: 3px solid var(--blue-primary); font-style: italic; color: var(--blue-dark); font-size: 1.15rem; line-height: 1.6; margin: 1rem 0; }
+
+/* ============================================
+   TIMELINE
+   ============================================ */
+.timeline__track { position: relative; margin-top: 4rem; }
+.timeline__line { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--border-soft); transform: translateX(-50%); }
+.timeline__item { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; margin-bottom: 6rem; position: relative; }
+.timeline__item:nth-child(even) { direction: rtl; }
+.timeline__item:nth-child(even) .timeline__card { direction: ltr; }
+.timeline__item:last-child { margin-bottom: 0; }
+.timeline__dot { position: absolute; left: 50%; top: 1rem; transform: translateX(-50%); width: 14px; height: 14px; background: var(--blue-primary); border-radius: 50%; z-index: 2; box-shadow: 0 0 0 6px var(--blue-light); }
+.timeline__year { font-family: var(--font-display); font-size: 3rem; font-weight: 700; letter-spacing: -0.03em; color: var(--blue-primary); line-height: 1; }
+.timeline__card { background: var(--white); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 2rem; box-shadow: 0 4px 24px rgba(0,87,184,0.04); }
+.timeline__card h3 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--blue-dark); }
+.timeline__card p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; }
+
+/* ============================================
+   PRODUCTS
+   ============================================ */
+.products__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 3.5rem; }
+.product-card { position: relative; background: var(--white); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; cursor: pointer; transition: all 0.5s var(--ease-out); }
+.product-card:hover { transform: translateY(-8px); border-color: var(--border-soft); box-shadow: 0 24px 48px rgba(0,87,184,0.08); }
+.product-card__image { height: 280px; position: relative; overflow: hidden; background: var(--gray-light); display: flex; align-items: center; justify-content: center; padding: 2rem; }
+.product-card__image img { max-height: 100%; max-width: 100%; object-fit: contain; transition: transform 0.8s var(--ease-out); }
+.product-card:hover .product-card__image img { transform: scale(1.06); }
+.product-card__badge { position: absolute; top: 1rem; right: 1rem; background: var(--blue-primary); color: var(--white); font-size: 0.65rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 100px; letter-spacing: 0.08em; text-transform: uppercase; z-index: 2; }
+.product-card__body { padding: 1.5rem; }
+.product-card__cat { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--blue-primary); margin-bottom: 0.4rem; }
+.product-card__name { font-family: var(--font-display); font-size: 1.2rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.3rem; color: var(--blue-dark); }
+.product-card__variants { font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 1rem; }
+.product-card__link { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; font-weight: 600; color: var(--blue-primary); transition: gap 0.3s var(--ease-out); }
+.product-card__link:hover { gap: 0.7rem; }
+
+/* ============================================
+   FARM-TO-TABLE / PROCESS
+   ============================================ */
+.process__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 4rem; }
+.process-card { position: relative; border-radius: var(--radius-md); overflow: hidden; cursor: pointer; aspect-ratio: 4/5; background: var(--blue-dark); }
+.process-card__img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s var(--ease-out), filter 0.7s var(--ease-out); filter: brightness(0.75); }
+.process-card:hover .process-card__img { transform: scale(1.07); filter: brightness(0.95); }
+.process-card:hover { box-shadow: 0 28px 56px rgba(0,87,184,0.18); }
+.process-card__overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, rgba(18,58,111,0.85) 100%); display: flex; flex-direction: column; justify-content: flex-end; padding: 1.75rem; }
+.process-card__step { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.25em; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-bottom: 0.35rem; }
+.process-card__title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; color: var(--white); margin-bottom: 0.35rem; transform: translateY(12px); opacity: 0; transition: all 0.5s 0.05s var(--ease-out); }
+.process-card:hover .process-card__title { transform: translateY(0); opacity: 1; }
+.process-card__desc { font-size: 0.8rem; color: rgba(255,255,255,0.65); line-height: 1.55; transform: translateY(12px); opacity: 0; transition: all 0.5s 0.15s var(--ease-out); }
+.process-card:hover .process-card__desc { transform: translateY(0); opacity: 1; }
+
+/* ============================================
+   RECIPES
+   ============================================ */
+.recipes__grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1.5rem; margin-top: 3.5rem; }
+.recipes__featured { grid-row: span 2; position: relative; border-radius: var(--radius-md); overflow: hidden; cursor: pointer; }
+.recipes__featured img { width: 100%; height: 100%; min-height: 450px; object-fit: cover; transition: transform 0.8s var(--ease-out); }
+.recipes__featured:hover img { transform: scale(1.04); }
+.recipes__featured-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(18,58,111,0.85) 100%); display: flex; flex-direction: column; justify-content: flex-end; padding: 2rem; }
+.recipes__featured-overlay .recipes__cat { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.85); margin-bottom: 0.5rem; }
+.recipes__featured-overlay h3 { font-family: var(--font-display); font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; color: var(--white); }
+.recipe-card { position: relative; border-radius: var(--radius-md); overflow: hidden; cursor: pointer; background: var(--white); border: 1px solid var(--border-subtle); transition: all 0.4s var(--ease-out); }
+.recipe-card:hover { transform: translateY(-4px); border-color: var(--border-soft); box-shadow: 0 12px 32px rgba(0,87,184,0.06); }
+.recipe-card img { width: 100%; height: 180px; object-fit: cover; }
+.recipe-card__body { padding: 1.25rem; }
+.recipe-card__cat { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--blue-primary); margin-bottom: 0.3rem; }
+.recipe-card__title { font-family: var(--font-display); font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; color: var(--blue-dark); }
+.recipe-card__time { font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.5rem; }
+
+/* ============================================
+   SUSTAINABILITY
+   ============================================ */
+.sustainability__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 3.5rem; }
+.sus-card { background: var(--white); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 2rem; transition: all 0.4s var(--ease-out); }
+.sus-card:hover { border-color: var(--border-soft); transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,87,184,0.05); }
+.sus-card__icon { font-size: 2rem; margin-bottom: 1rem; }
+.sus-card__title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.75rem; color: var(--blue-dark); }
+.sus-card__text { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; }
+
+/* ============================================
+   NEWS
+   ============================================ */
+.news__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 3.5rem; }
+.news-card { background: var(--white); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; transition: all 0.4s var(--ease-out); cursor: pointer; }
+.news-card:hover { transform: translateY(-6px); border-color: var(--border-soft); box-shadow: 0 20px 40px rgba(0,87,184,0.06); }
+.news-card__image { height: 200px; overflow: hidden; }
+.news-card__image img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s var(--ease-out); }
+.news-card:hover .news-card__image img { transform: scale(1.05); }
+.news-card__body { padding: 1.5rem; }
+.news-card__date { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 0.5rem; }
+.news-card__title { font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.5rem; line-height: 1.3; color: var(--blue-dark); }
+.news-card__excerpt { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
+
+/* ============================================
+   CONTACT
+   ============================================ */
+.contact__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; margin-top: 3.5rem; }
+.contact__info { display: flex; flex-direction: column; gap: 2rem; }
+.contact__info-item { display: flex; gap: 1rem; align-items: flex-start; }
+.contact__info-icon { width: 44px; height: 44px; background: var(--blue-light); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+.contact__info-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 0.2rem; }
+.contact__info-value { font-size: 0.95rem; color: var(--blue-dark); }
+.contact__form { display: flex; flex-direction: column; gap: 1.25rem; }
+.contact__field { display: flex; flex-direction: column; gap: 0.4rem; }
+.contact__field label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); }
+.contact__field input, .contact__field select, .contact__field textarea { padding: 0.85rem 1rem; background: var(--white); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body); font-size: 0.9rem; transition: all 0.3s; outline: none; }
+.contact__field input:focus, .contact__field select:focus, .contact__field textarea:focus { border-color: var(--blue-primary); box-shadow: 0 0 0 3px rgba(0,87,184,0.08); }
+.contact__field textarea { min-height: 120px; resize: vertical; }
+.contact__submit { align-self: flex-start; padding: 0.85rem 2.5rem; background: var(--blue-primary); color: var(--white); border: none; border-radius: 100px; font-family: var(--font-body); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; cursor: pointer; transition: all 0.4s var(--ease-out); }
+.contact__submit:hover { background: var(--blue-dark); transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,87,184,0.25); }
+
+/* ============================================
+   FOOTER
+   ============================================ */
+.footer { background: var(--blue-dark); color: rgba(255,255,255,0.85); padding: 4rem 2.5rem 2rem; }
+.footer__inner { max-width: var(--container); margin: 0 auto; }
+.footer__grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; margin-bottom: 3rem; }
+.footer__brand { display: flex; flex-direction: column; gap: 1rem; }
+.footer__logo { display: flex; align-items: center; gap: 0.75rem; font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; letter-spacing: -0.02em; color: var(--white); }
+.footer__logo-mark { width: 32px; height: 32px; background: rgba(255,255,255,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 800; color: var(--white); flex-shrink: 0; }
+.footer__desc { font-size: 0.85rem; color: rgba(255,255,255,0.55); line-height: 1.7; max-width: 20rem; }
+.footer__col h4 { font-family: var(--font-display); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 1.25rem; color: var(--white); }
+.footer__col ul { display: flex; flex-direction: column; gap: 0.75rem; }
+.footer__col a { font-size: 0.85rem; color: rgba(255,255,255,0.6); transition: color 0.3s; }
+.footer__col a:hover { color: var(--white); }
+.footer__bottom { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.footer__legal { font-size: 0.78rem; color: rgba(255,255,255,0.4); }
+.footer__social { display: flex; gap: 1rem; }
+.footer__social a { width: 36px; height: 36px; border: 1px solid rgba(255,255,255,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: rgba(255,255,255,0.6); transition: all 0.3s; }
+.footer__social a:hover { border-color: var(--white); color: var(--white); background: rgba(255,255,255,0.08); }
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 1024px) {
+  .nav__links { display: none; }
+  .nav__hamburger { display: flex; }
+  .nav__actions .nav__cta { display: none; }
+  .about__grid { grid-template-columns: 1fr; gap: 3rem; }
+  .products__grid { grid-template-columns: repeat(2, 1fr); }
+  .recipes__grid { grid-template-columns: 1fr 1fr; }
+  .recipes__featured { grid-row: span 1; }
+  .recipes__featured img { min-height: 300px; }
+  .news__grid { grid-template-columns: repeat(2, 1fr); }
+  .contact__grid { grid-template-columns: 1fr; gap: 3rem; }
+  .footer__grid { grid-template-columns: 1fr 1fr; }
+  .timeline__item { grid-template-columns: 1fr; gap: 1.5rem; }
+  .timeline__item:nth-child(even) { direction: ltr; }
+  .timeline__line { left: 2rem; }
+  .timeline__dot { left: 2rem; }
+  .timeline__year { font-size: 2rem; }
+  .process__grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .nav { padding: 1rem 1.25rem; }
+  .nav.scrolled { padding: 0.75rem 1.25rem; }
+  .section { padding: 3.5rem 1.25rem; }
+  .hero__content { padding: 0 1.25rem; }
+  .hero__title { font-size: clamp(2.5rem, 10vw, 3.5rem); }
+  .products__grid { grid-template-columns: 1fr; }
+  .recipes__grid { grid-template-columns: 1fr; }
+  .news__grid { grid-template-columns: 1fr; }
+  .sustainability__grid { grid-template-columns: 1fr; }
+  .process__grid { grid-template-columns: 1fr; }
+  .footer__grid { grid-template-columns: 1fr; gap: 2rem; }
+  .footer__bottom { flex-direction: column; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================
+     NAVIGATION
+     ============================================ -->
+<nav class="nav" id="nav">
+  <a href="#" class="nav__logo">
+    <div class="nav__logo-mark">
+      <img src="https://www.qumeshtorjavita.com/wp-content/uploads/2025/09/cropped-Vitalogo@3x-2025-07-01-e1758449541308.png" alt="VITA">
+    </div>
+    VITA
+  </a>
+  <div class="nav__links">
+    <a href="#products" class="nav__link">Products</a>
+    <a href="#recipes" class="nav__link">Recipes</a>
+    <a href="#about" class="nav__link">About</a>
+    <a href="#sustainability" class="nav__link">Sustainability</a>
+    <a href="#news" class="nav__link">News</a>
+    <a href="#contact" class="nav__link">Contact</a>
+  </div>
+  <div class="nav__actions">
+    <button class="nav__lang" aria-label="Switch language">SQ</button>
+    <a href="#contact" class="nav__cta">Get In Touch</a>
+    <button class="nav__hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="mobile-nav" id="mobileNav">
+  <a href="#products" class="mobile-nav__link">Products</a>
+  <a href="#recipes" class="mobile-nav__link">Recipes</a>
+  <a href="#about" class="mobile-nav__link">About</a>
+  <a href="#sustainability" class="mobile-nav__link">Sustainability</a>
+  <a href="#news" class="mobile-nav__link">News</a>
+  <a href="#contact" class="mobile-nav__link">Contact</a>
+</div>
+
+<!-- ============================================
+     HERO
+     ============================================ -->
+<section class="hero" id="hero">
+  <div class="hero__bg">
+    <img class="hero__bg-img" src="https://images.pexels.com/photos/422218/pexels-photo-422218.jpeg?auto=compress&cs=tinysrgb&w=1920" alt="Cows grazing on a green dairy farm at sunrise" loading="eager" fetchpriority="high">
+  </div>
+  <div class="hero__content">
+    <p class="hero__eyebrow">Qumështorja VITA — Est. 2003</p>
+    <h1 class="hero__title">
+      <span class="hero__title-line"><span>Fresh From Nature.</span></span>
+      <span class="hero__title-line"><span>Trusted Every Day.</span></span>
+    </h1>
+    <p class="hero__desc">Kosovo's first UHT milk. Made with milk from family farms in the Rugova highlands, processed with care in Istog, and delivered fresh to homes across the Balkans.</p>
+    <div class="hero__actions">
+      <a href="#products" class="btn btn--primary">Discover Our Products</a>
+      <a href="#about" class="btn btn--ghost">Our Story</a>
+    </div>
+  </div>
+  <div class="hero__scroll">
+    <span class="hero__scroll-text">Scroll</span>
+    <div class="hero__scroll-line"></div>
+  </div>
+</section>
+
+<!-- ============================================
+     ABOUT
+     ============================================ -->
+<section class="section section--alt" id="about">
+  <div class="section__inner">
+    <p class="section__eyebrow reveal">Our Story</p>
+    <h2 class="section__title reveal reveal--delay-1">Kosovo's first love.<br>For over twenty years.</h2>
+    <p class="section__desc reveal reveal--delay-2">In 2003, Devolli Group partnered with Tetra Pak to bring UHT technology to Kosovo for the very first time. The result was VITA — a milk that didn't just fill glasses, but built trust across an entire nation.</p>
+    <div class="about__grid">
+      <div class="about__image-wrap reveal">
+        <img src="https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=800&q=85" alt="Kosovo mountain pastures at sunrise" loading="lazy">
+      </div>
+      <div class="about__content reveal reveal--delay-1">
+        <div>
+          <p class="about__stat-label">Team</p>
+          <div class="about__stat">280<span style="font-size:0.5em;vertical-align:super">+</span></div>
+          <p style="font-size:0.85rem;color:var(--text-tertiary)">dedicated employees</p>
+        </div>
+        <p class="about__text">Every drop of VITA milk passes through rigorous testing — from farm collection to packaging — ensuring unmatched purity and nutrition. We work with thousands of collaborating farmers across Kosovo's most pristine dairy regions.</p>
+        <blockquote class="about__quote">"Vita is Kosovo's first milk brand produced using UHT technology. From fresh milk to yogurt, cream, and cheese, Vita embodies quality, innovation, and trust."</blockquote>
+        <p class="about__text">Today, VITA is the region's leader in dairy production and export — a position built not on shortcuts, but on an unwavering commitment to every single litre.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     TIMELINE
+     ============================================ -->
+<section class="section timeline" id="timeline">
+  <div class="section__inner">
+    <p class="section__eyebrow reveal">Our Journey</p>
+    <h2 class="section__title reveal reveal--delay-1">Built on belief.<br>Grown with trust.</h2>
+    <div class="timeline__track">
+      <div class="timeline__line"></div>
+      <div class="timeline__item reveal">
+        <div style="text-align:right">
+          <div class="timeline__year">2003</div>
+        </div>
+        <div>
+          <div class="timeline__dot"></div>
+          <div class="timeline__card">
+            <h3>The Beginning</h3>
+            <p>Devolli Group, in partnership with Tetra Pak, launches Kosovo's first-ever UHT milk production line. VITA is born in Istog — a small town with big ambition.</p>
+          </div>
+        </div>
+      </div>
+      <div class="timeline__item reveal">
+        <div></div>
+        <div>
+          <div class="timeline__dot"></div>
+          <div class="timeline__card">
+            <h3>Expanding the Family</h3>
+            <p>From just fresh milk, VITA grows into yogurt, ayran, clabber, cheese, cooking cream, and whipping cream — becoming the dairy that Kosovar families reach for every morning.</p>
+          </div>
+        </div>
+        <div>
+          <div class="timeline__year">2010</div>
+        </div>
+      </div>
+      <div class="timeline__item reveal">
+        <div style="text-align:right">
+          <div class="timeline__year">2026</div>
+        </div>
+        <div>
+          <div class="timeline__dot"></div>
+          <div class="timeline__card">
+            <h3>Leading the Region</h3>
+            <p>Over 280 employees, thousands of partner farmers, and a presence in markets across the Balkans. Still innovating. Still uncompromising. Still VITA.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     FARM TO TABLE / PROCESS
+     ============================================ -->
+<section class="section section--alt" id="process">
+  <div class="section__inner">
+    <p class="section__eyebrow reveal">Farm to Table</p>
+    <h2 class="section__title reveal reveal--delay-1">Every drop<br>has a journey.</h2>
+    <p class="section__desc reveal reveal--delay-2">From the highland pastures to your table — each step is measured, tested, and cared for.</p>
+    <div class="process__grid">
+      <!-- 1. Farm -->
+      <div class="process-card reveal">
+        <img class="process-card__img" src="https://i.ytimg.com/vi/tshipAhCapY/sddefault.jpg" alt="VITA Dairy — 10 years of trusted quality" loading="lazy">
+        <div class="process-card__overlay">
+          <span class="process-card__step">Step 01</span>
+          <h3 class="process-card__title">Farm</h3>
+          <p class="process-card__desc">Fresh milk collected daily from family farms across Kosovo's pristine dairy regions.</p>
+        </div>
+      </div>
+      <!-- 2. Quality Testing -->
+      <div class="process-card reveal reveal--delay-1">
+        <img class="process-card__img" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTJHbVl_zkxZ49H1THdo-FgImH_jbNIzy-XcOu3dJC0NjK8WtS-cA43nyP8&s=400" alt="VITA quality — rigorously tested at every stage" loading="lazy">
+        <div class="process-card__overlay">
+          <span class="process-card__step">Step 02</span>
+          <h3 class="process-card__title">Quality Testing</h3>
+          <p class="process-card__desc">Every batch undergoes rigorous testing — purity, fat content, and microbiology.</p>
+        </div>
+      </div>
+      <!-- 3. Production -->
+      <div class="process-card reveal reveal--delay-2">
+        <img class="process-card__img" src="https://www.qumeshtorjavita.com/wp-content/uploads/2025/10/QumeshtorjaVita-me-e-madhja-ne-rajon.webp" alt="VITA production facility — the largest dairy plant in the region" loading="lazy">
+        <div class="process-card__overlay">
+          <span class="process-card__step">Step 03</span>
+          <h3 class="process-card__title">Production</h3>
+          <p class="process-card__desc">State-of-the-art UHT processing preserves freshness and nutrition without compromise.</p>
+        </div>
+      </div>
+      <!-- 4. Packaging -->
+      <div class="process-card reveal">
+        <img class="process-card__img" src="https://www.qumeshtorjavita.com/wp-content/uploads/2025/10/Vita_Whipping_Cream_1L-1.webp" alt="VITA whipping cream — aseptically packaged" loading="lazy">
+        <div class="process-card__overlay">
+          <span class="process-card__step">Step 04</span>
+          <h3 class="process-card__title">Packaging</h3>
+          <p class="process-card__desc">Aseptic Tetra Pak cartons lock in flavour — no preservatives, no refrigeration needed.</p>
+        </div>
+      </div>
+      <!-- 5. Distribution -->
+      <div class="process-card reveal reveal--delay-1">
+        <img class="process-card__img" src="https://www.qumeshtorjavita.com/wp-content/uploads/2025/10/Vita_Ayran_1.2_1L-450x800.webp" alt="VITA Ayran — delivered fresh across the Balkans" loading="lazy">
+        <div class="process-card__overlay">
+          <span class="process-card__step">Step 05</span>
+          <h3 class="process-card__title">Distribution</h3>
+          <p class="process-card__desc">Cold-chain logistics deliver fresh to stores and homes across Kosovo and the Balkans.</p>
+        </div>
+      </div>
+      <!-- 6. Your Table -->
+      <div class="process-card reveal reveal--delay-2">
+        <img class="process-card__img" src="https://www.qumeshtorjavita.com/wp-content/uploads/2025/10/Vita_Kos_3.2_400gr-e1760282889787.webp" alt="VITA clabber — enjoyed at family tables every day" loading="lazy">
+        <div class="process-card__overlay">
+          <span class="process-card__step">Step 06</span>
+          <h3 class="process-card__title">Your Table</h3>
+          <p class="process-card__desc">Fresh, pure, and trusted — shared with the people who matter most.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     PRODUCTS
+     ============================================ -->
+<section class="section products" id="products">
+  <div class="section__inner">
+    <p class="section__eyebrow reveal">Our Range</p>
+    <h2 class="section__title reveal reveal--delay-1">Products made<br>with one ingredient first:<br>trust.</h2>
+    <div class="products__grid">
+      <!-- Milk -->
+      <div class="product-card reveal">
+        <div class="product-card__image">
+          <img src="https://www.qumeshtorjavita.com/wp-content/uploads/2025/11/Vita_Qumesht_3.2_1L-04-Nsh.webp" alt="Vita Qumësht 3.2% Milk" loading="lazy">
+        </div>
+        <div class="product-card__body">
+          <p class="product-card__cat">Fresh Milk</p>
+          <h3 class="product-card__name">Vita Qumësht</h3>
+          <p class="product-card__variants">Available in 0.5%, 1.5%, 3.2% fat</p>
+          <span class="product-card__link">Learn more →</span>
+        </div>
+      </div>
+      <!-- Yogurt -->
+      <div class="product-card reveal reveal--delay-1">
+        <div class="product-card__image">
+          <img src="https://www.qumeshtorjavita.com/wp-content/uploads/2026/01/Vita_Jogurt_3.2_1L.webp" alt="Vita Jogurt 3.2%" loading="lazy">
+        </div>
+        <div class="product-card__body">
+          <p class="product-card__cat">Yogurt</p>
+          <h3 class="product-card__name">Vita Jogurt</h3>
+          <p class="product-card__variants">Available in 0.5%, 1.5%, 3.2% fat</p>
+          <span class="product-card__link">Learn more →</span>
+        </div>
+      </div>
+      <!-- Ayran -->
+      <div class="product-card reveal reveal--delay-2">
+        <div class="product-card__image">
+          <img src="https://www.qumeshtorjavita.com/wp-content/uploads/2025/10/Vita_Ayran_1.2_1L-450x800.webp" alt="Vita Ayran 1.2%" loading="lazy">
+        </div>
+        <div class="product-card__body">
+          <p class="product-card__cat">Ayran</p>
+          <h3 class="product-card__name">Vita Ayran</h3>
+          <p class="product-card__variants">1.2% fat — a Balkan classic</p>
+          <span class="product-card__link">Learn more →</span>
+        </div>
+      </div>
+      <!-- Clabber -->
+      <div class="product-card reveal">
+        <div class="product-card__image">
+          <img src="https://www.qumeshtorjavita.com/wp-content/uploads/2025/10/Vita_Kos_3.2_400gr-e1760282889787.webp" alt="Vita Kos 3.2% Clabber" loading="lazy">
+        </div>
+        <div class="product-card__body">
+          <p class="product-card__cat">Clabber</p>
+          <h3 class="product-card__name">Vita Kos</h3>
+          <p class="product-card__variants">3.2% fat — 180g, 400g</p>
+          <span class="product-card__link">Learn more →</span>
+        </div>
+      </div>
+      <!-- Cooking Cream -->
+      <div class="product-card reveal reveal--delay-1">
+        <div class="product-card__image">
+          <img src="https://www.qumeshtorjavita.com/wp-content/uploads/2025/10/Vita_Cooking_Cream_1L-1.webp" alt="Vita Cooking Cream 1L" loading="lazy">
+        </div>
+        <div class="product-card__body">
+          <p class="product-card__cat">Cooking Cream</p>
+          <h3 class="product-card__name">Vita Cooking Cream</h3>
+          <p class="product-card__variants">Available in 0.5L and 1L</p>
+          <span class="product-card__link">Learn more →</span>
+        </div>
+      </div>
+      <!-- Whipping Cream -->
+      <div class="product-card reveal reveal--delay-2">
+        <div class="product-card__image">
+          <img src="https://www.qumeshtorjavita.com/wp-content/uploads/2025/10/Vita_Whipping_Cream_1L-1.webp" alt="Vita Whipping Cream" loading="lazy">
+        </div>
+        <div class="product-card__body">
+          <p class="product-card__cat">Whipping Cream</p>
+          <h3 class="product-card__name">Vita Whipping Cream</h3>
+          <p class="product-card__variants">Perfect peaks, every time</p>
+          <span class="product-card__link">Learn more →span>
+        </div>
+      </div>
+      <!-- White Cheese -->
+      <div class="product-card reveal">
+        <div class="product-card__image">
+          <img src="https://www.qumeshtorjavita.com/wp-content/uploads/2025/09/Vita_White_Cheese_800gr-300x284.webp" alt="Vita White Cheese" loading="lazy">
+        </div>
+        <div class="product-card__body">
+          <p class="product-card__cat">Cheese</p>
+          <h3 class="product-card__name">Vita White Cheese</h3>
+          <p class="product-card__variants">Available in 250g, 500g, 800g</p>
+          <span class="product-card__link">Learn more →</span>
+        </div>
+      </div>
+      <!-- Schmand -->
+      <div class="product-card reveal reveal--delay-1">
+        <div class="product-card__image">
+          <img src="https://www.qumeshtorjavita.com/wp-content/uploads/2025/10/Vita_Schmand_18_400gr.webp" alt="Vita Schmand 18%" loading="lazy">
+        </div>
+        <div class="product-card__body">
+          <p class="product-card__cat">Schmand</p>
+          <h3 class="product-card__name">Vita Schmand</h3>
+          <p class="product-card__variants">18% fat — 400g, 800g</p>
+          <span class="product-card__link">Learn more →</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     RECIPES
+     ============================================ -->
+<section class="section section--alt recipes" id="recipes">
+  <div class="section__inner">
+    <p class="section__eyebrow reveal">In the Kitchen</p>
+    <h2 class="section__title reveal reveal--delay-1">Recipes worth<br>sharing the table for.</h2>
+    <div class="recipes__grid">
+      <div class="recipes__featured reveal">
+        <img src="https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=900&q=85" alt="Breakfast spread with fresh dairy" loading="lazy">
+        <div class="recipes__featured-overlay">
+          <p class="recipes__cat">Breakfast</p>
+          <h3>The Rugova Morning — clabber with wild honey and mountain berries</h3>
+        </div>
+      </div>
+      <div class="recipe-card reveal reveal--delay-1">
+        <img src="https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=600&q=85" alt="Smoothie bowl" loading="lazy">
+        <div class="recipe-card__body">
+          <p class="recipe-card__cat">Smoothies</p>
+          <h3 class="recipe-card__title">Summer Berry Smoothie</h3>
+          <p class="recipe-card__time">5 min · Easy</p>
+        </div>
+      </div>
+      <div class="recipe-card reveal reveal--delay-2">
+        <img src="https://images.unsplash.com/photo-1551024506-0bccd828d307?w=600&q=85" alt="Creamy pasta" loading="lazy">
+        <div class="recipe-card__body">
+          <p class="recipe-card__cat">Cooking</p>
+          <h3 class="recipe-card__title">Creamy Mushroom Pasta</h3>
+          <p class="recipe-card__time">25 min · Medium</p>
+        </div>
+      </div>
+      <div class="recipe-card reveal reveal--delay-1">
+        <img src="https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600&q=85" alt="Trilece dessert" loading="lazy">
+        <div class="recipe-card__body">
+          <p class="recipe-card__cat">Desserts</p>
+          <h3 class="recipe-card__title">Trilece with VITA Cream</h3>
+          <p class="recipe-card__time">45 min · Classic</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     SUSTAINABILITY
+     ============================================ -->
+<section class="section sustainability" id="sustainability">
+  <div class="section__inner">
+    <p class="section__eyebrow reveal">Our Commitment</p>
+    <h2 class="section__title reveal reveal--delay-1">Good for your family.<br>Better for the future.</h2>
+    <div class="sustainability__grid">
+      <div class="sus-card reveal">
+        <div class="sus-card__icon">🌿</div>
+        <h3 class="sus-card__title">Tetra Pak Packaging</h3>
+        <p class="sus-card__text">Our aseptic cartons are predominantly paper-based, recyclable, and designed to preserve freshness without preservatives — reducing food waste across the supply chain.</p>
+      </div>
+      <div class="sus-card reveal reveal--delay-1">
+        <div class="sus-card__icon">👨‍🌾</div>
+        <h3 class="sus-card__title">Supporting Local Farmers</h3>
+        <p class="sus-card__text">Thousands of family farms across Kosovo supply our milk. We invest in training, fair pricing, and long-term partnerships that strengthen rural communities.</p>
+      </div>
+      <div class="sus-card reveal reveal--delay-2">
+        <div class="sus-card__icon">⚡</div>
+        <h3 class="sus-card__title">Efficient Production</h3>
+        <p class="sus-card__text">Our UHT technology extends shelf life to months without refrigeration — dramatically reducing energy use in storage, transport, and retail compared to short-life pasteurized milk.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     NEWS
+     ============================================ -->
+<section class="section section--alt news" id="news">
+  <div class="section__inner">
+    <p class="section__eyebrow reveal">Latest</p>
+    <h2 class="section__title reveal reveal--delay-1">News from VITA.</h2>
+    <div class="news__grid">
+      <article class="news-card reveal">
+        <div class="news-card__image">
+          <img src="https://images.unsplash.com/photo-1580674285054-bed31e145f59?w=600&q=85" alt="VITA production facility" loading="lazy">
+        </div>
+        <div class="news-card__body">
+          <p class="news-card__date">June 2026</p>
+          <h3 class="news-card__title">VITA Expands Production Capacity at Istog Facility</h3>
+          <p class="news-card__excerpt">New processing lines and quality control laboratories to meet growing demand across the region.</p>
+        </div>
+      </article>
+      <article class="news-card reveal reveal--delay-1">
+        <div class="news-card__image">
+          <img src="https://images.unsplash.com/photo-1528505086635-4c69d5f10908?w=600&q=85" alt="Dairy farm" loading="lazy">
+        </div>
+        <div class="news-card__body">
+          <p class="news-card__date">May 2026</p>
+          <h3 class="news-card__title">New Farmer Partnership Programme Launched</h3>
+          <p class="news-card__excerpt">Initiative provides training and equipment to 200+ family dairy farms in the Rugova region.</p>
+        </div>
+      </article>
+      <article class="news-card reveal reveal--delay-2">
+        <div class="news-card__image">
+          <img src="https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&q=85" alt="VITA products on shelf" loading="lazy">
+        </div>
+        <div class="news-card__body">
+          <p class="news-card__date">April 2026</p>
+          <h3 class="news-card__title">VITA Ayran Wins Regional Taste Award</h3>
+          <p class="news-card__excerpt">Our traditional ayran recognised for authentic flavour and consistency at the Balkan Food Forum.</p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     CONTACT
+     ============================================ -->
+<section class="section contact" id="contact">
+  <div class="section__inner">
+    <p class="section__eyebrow reveal">Get In Touch</p>
+    <h2 class="section__title reveal reveal--delay-1">We'd love to<br>hear from you.</h2>
+    <div class="contact__grid">
+      <div class="contact__info reveal">
+        <div class="contact__info-item">
+          <div class="contact__info-icon">📍</div>
+          <div>
+            <p class="contact__info-label">Factory</p>
+            <p class="contact__info-value">Rudina Nr. 91<br>31000 Istog, Kosovë</p>
+          </div>
+        </div>
+        <div class="contact__info-item">
+          <div class="contact__info-icon">📞</div>
+          <div>
+            <p class="contact__info-label">Phone</p>
+            <a href="tel:+38339450552" class="contact__info-value">+383 39 450552</a>
+          </div>
+        </div>
+        <div class="contact__info-item">
+          <div class="contact__info-icon">✉️</div>
+          <div>
+            <p class="contact__info-label">Email</p>
+            <a href="mailto:info@qumeshtorjavita.com" class="contact__info-value">info@qumeshtorjavita.com</a>
+          </div>
+        </div>
+      </div>
+      <form class="contact__form reveal reveal--delay-1" id="contactForm">
+        <div class="contact__field">
+          <label for="name">Full Name *</label>
+          <input type="text" id="name" name="name" required placeholder="Your full name">
+        </div>
+        <div class="contact__field">
+          <label for="email">Email *</label>
+          <input type="email" id="email" name="email" required placeholder="your@email.com">
+        </div>
+        <div class="contact__field">
+          <label for="subject">Subject *</label>
+          <select id="subject" name="subject" required>
+            <option value="">Select a topic...</option>
+            <option value="general">General Inquiry</option>
+            <option value="products">Product Information</option>
+            <option value="complaint">Complaint</option>
+            <option value="careers">Careers</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="contact__field">
+          <label for="message">Message *</label>
+          <textarea id="message" name="message" required placeholder="How can we help you?"></textarea>
+        </div>
+        <button type="submit" class="contact__submit">Send Message</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     FOOTER
+     ============================================ -->
+<footer class="footer">
+  <div class="footer__inner">
+    <div class="footer__grid">
+      <div class="footer__brand">
+        <div class="footer__logo">
+          <div class="footer__logo-mark">V</div>
+          VITA
+        </div>
+        <p class="footer__desc">Kosovo's first UHT milk. Made with care in Istog, trusted in homes across the Balkans since 2003. Part of Devolli Group.</p>
+      </div>
+      <div class="footer__col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#about">About Us</a></li>
+          <li><a href="#news">News</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="https://devolligroup.com" target="_blank" rel="noopener">Devolli Group</a></li>
+        </ul>
+      </div>
+      <div class="footer__col">
+        <h4>Support</h4>
+        <ul>
+          <li><a href="#contact">Contact Us</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms & Conditions</a></li>
+          <li><a href="#">Cookie Policy</a></li>
+        </ul>
+      </div>
+      <div class="footer__col">
+        <h4>Follow</h4>
+        <ul>
+          <li><a href="https://facebook.com/vitakosovo" target="_blank" rel="noopener">Facebook</a></li>
+          <li><a href="https://instagram.com/qumeshtorjavita" target="_blank" rel="noopener">Instagram</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <p class="footer__legal">Qumështorja Vita © 2026. VITA and its affiliated brands are registered trademarks of Devolli Group. All rights reserved.</p>
+      <div class="footer__social">
+        <a href="https://facebook.com/vitakosovo" target="_blank" rel="noopener" aria-label="Facebook">f</a>
+        <a href="https://instagram.com/qumeshtorjavita" target="_blank" rel="noopener" aria-label="Instagram">ig</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ============================================
+// VITA DAIRY — Premium Interactions
+// ============================================
+
+const nav = document.getElementById('nav');
+
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 60) {
+    nav.classList.add('scrolled');
+  } else {
+    nav.classList.remove('scrolled');
+  }
+}, { passive: true });
+
+// Mobile nav
+const hamburger = document.getElementById('hamburger');
+const mobileNav = document.getElementById('mobileNav');
+let menuOpen = false;
+
+hamburger.addEventListener('click', () => {
+  menuOpen = !menuOpen;
+  mobileNav.classList.toggle('open', menuOpen);
+  hamburger.setAttribute('aria-expanded', menuOpen);
+  document.body.style.overflow = menuOpen ? 'hidden' : '';
+});
+
+mobileNav.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    menuOpen = false;
+    mobileNav.classList.remove('open');
+    hamburger.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+  });
+});
+
+// Scroll reveal
+const revealElements = document.querySelectorAll('.reveal');
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, {
+  threshold: 0.15,
+  rootMargin: '0px 0px -40px 0px'
+});
+
+revealElements.forEach(el => revealObserver.observe(el));
+
+// Hero parallax
+const heroBg = document.querySelector('.hero__bg-img');
+if (heroBg) {
+  window.addEventListener('scroll', () => {
+    const scrollY = window.scrollY;
+    const heroHeight = document.querySelector('.hero').offsetHeight;
+    if (scrollY <= heroHeight) {
+      heroBg.style.transform = `translateY(${scrollY * 0.35}px) scale(1.05)`;
+    }
+  }, { passive: true });
+}
+
+// Contact form
+const contactForm = document.getElementById('contactForm');
+if (contactForm) {
+  contactForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const btn = contactForm.querySelector('.contact__submit');
+    const originalText = btn.textContent;
+    btn.textContent = 'Message Sent ✓';
+    btn.style.background = '#123A6F';
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.style.background = '';
+      contactForm.reset();
+    }, 3000);
+  });
+}
+
+// Reduced motion
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  document.querySelectorAll('.reveal').forEach(el => {
+    el.style.transition = 'none';
+    el.classList.add('visible');
+  });
+}
+</script>
+
+</body>
+</html>
