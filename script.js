@@ -2,6 +2,10 @@
 // VITA DAIRY — Premium Interactions
 // ============================================
 
+// Always start at top on load / refresh
+history.scrollRestoration = 'manual';
+window.scrollTo(0, 0);
+
 const nav = document.getElementById('nav');
 
 window.addEventListener('scroll', () => {
@@ -107,72 +111,11 @@ if (prefersReduced) {
 }
 
 // ============================================
-// PIXEL MASCOT
+// FLOATING ICON
 // ============================================
 
-// Pixel-art cow sprite (32×32, VITA blue + white)
-const COW_SPRITE = [
-  '................................', // 0
-  '................................', // 1
-  '.........2222.....2222.........', // 2
-  '........222222...222222........', // 3
-  '.......2222222...2222222.......', // 4
-  '.......22222222222222222.......', // 5
-  '.......2220011221100222.......', // 6  eyes
-  '.......2220111221110222.......', // 7  eyes
-  '........2200000000022.........', // 8  snout
-  '........22001100110022.........', // 9  nostrils
-  '........22000122100022.........', // 10 mouth
-  '.......22222222222222222.......', // 11
-  '......2222222222222222222......', // 12
-  '.....22211112222221111222.....', // 13 ears
-  '....222111112222211111222....', // 14 ears
-  '...22221111111111111112222...', // 15 body top
-  '..2222111111111111111112222..', // 16
-  '..2222111111111111111112222..', // 17
-  '..2222111111111111111112222..', // 18
-  '..2222111111111111111112222..', // 19
-  '...22221111111111111122222...', // 20
-  '.....2222222222222222222.....', // 21
-  '........2222...2222..........', // 22 legs
-  '........2222...2222..........', // 23 legs
-  '........2222...2222..........', // 24 legs
-  '........2222...2222..........', // 25 legs
-  '.......22222...22222.........', // 26 hooves
-  '.......22222...22222.........', // 27 hooves
-  '.......11111...11111.........', // 28 hooves dark
-  '.......11111...11111.........', // 29 hooves dark
-  '............11...............', // 30 tail
-  '............11...............', // 31 tail
-];
-
-const COLORS = {
-  '.': 'transparent',
-  '0': '#123A6F',  // dark blue (eyes, snout details)
-  '1': '#0057B8',  // VITA blue (body)
-  '2': '#FFFFFF',  // white (face, body patches)
-};
-
-function drawCow(canvas) {
-  const ctx = canvas.getContext('2d');
-  const size = 32;
-  ctx.clearRect(0, 0, size, size);
-
-  for (let y = 0; y < COW_SPRITE.length; y++) {
-    const row = COW_SPRITE[y];
-    for (let x = 0; x < row.length; x++) {
-      const color = COLORS[row[x]];
-      if (color === 'transparent') continue;
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y, 1, 1);
-    }
-  }
-}
-
 // Init mascot
-const mascotCanvas = document.getElementById('mascotSprite');
 const mascot = document.getElementById('mascot');
-drawCow(mascotCanvas);
 
 // Show mascot after scrolling past hero
 let mascotVisible = false;
@@ -191,11 +134,11 @@ window.addEventListener('scroll', checkMascotVisibility, { passive: true });
 checkMascotVisibility();
 
 // ============================================
-// PIXEL DISSOLVE TRANSITION
+// PIXEL DISSOLVE TRANSITION (Cinematic — Real DOM Capture + GSAP)
 // ============================================
 
 const dissolveCanvas = document.getElementById('dissolve-canvas');
-const dCtx = dissolveCanvas.getContext('2d');
+const dCtx = dissolveCanvas.getContext('2d', { alpha: false });
 let dissolving = false;
 
 function resizeDissolveCanvas() {
@@ -205,164 +148,172 @@ function resizeDissolveCanvas() {
 resizeDissolveCanvas();
 window.addEventListener('resize', resizeDissolveCanvas);
 
-function capturePage() {
-  // Create an offscreen canvas to snapshot the page
-  const offscreen = document.createElement('canvas');
-  offscreen.width = window.innerWidth;
-  offscreen.height = window.innerHeight;
-  const octx = offscreen.getContext('2d');
-
-  // Draw a solid background matching the site
-  octx.fillStyle = '#FFFFFF';
-  octx.fillRect(0, 0, offscreen.width, offscreen.height);
-
-  // Draw blue-dark strip for hero/footer areas to give the capture depth
-  // We'll use html2canvas approach via manual DOM reading isn't ideal.
-  // Instead, we'll generate a stylized capture by painting bands of color
-  // that represent the page sections — this creates the pixel dissolve effect
-  // on a page-colored canvas.
-
-  // Get current scroll position
-  const scrollY = window.scrollY;
-  const docH = document.documentElement.scrollHeight;
-  const winH = window.innerHeight;
-
-  // Paint sections based on scroll position (simplified page representation)
-  const sections = [
-    { top: 0, h: winH, color: '#123A6F' },                    // hero (blue-dark)
-    { top: winH, h: winH * 0.6, color: '#F7F9FC' },          // about (gray-light)
-    { top: winH * 1.6, h: winH * 0.9, color: '#FFFFFF' },    // timeline (white)
-    { top: winH * 2.5, h: winH * 2.8, color: '#F7F9FC' },   // process (gray-light)
-    { top: winH * 5.3, h: winH * 2.5, color: '#FFFFFF' },   // products (white)
-    { top: winH * 7.8, h: winH * 1.3, color: '#FFFFFF' },   // editorial (white)
-    { top: winH * 9.1, h: winH * 1.5, color: '#F7F9FC' },  // news (gray-light)
-    { top: winH * 10.6, h: winH * 1, color: '#FFFFFF' },    // contact (white)
-    { top: winH * 11.6, h: winH * 0.8, color: '#123A6F' },  // footer (blue-dark)
-  ];
-
-  // Map sections to viewport positions
-  sections.forEach(s => {
-    const y = s.top - scrollY;
-    const h = s.h;
-    if (y + h > 0 && y < winH) {
-      octx.fillStyle = s.color;
-      octx.fillRect(0, y, offscreen.width, h);
-    }
-  });
-
-  return offscreen;
+// ── Real page capture via html2canvas (fallback: section bands) ───────────
+async function capturePage() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const sx = window.scrollX, sy = window.scrollY;
+  try {
+    const raw = await html2canvas(document.documentElement, {
+      allowTaint: true,       // draw cross-origin images even if tainted
+      // NO useCORS — would block images from servers without CORS headers
+      scale: 1,
+      logging: false,
+      width: vw,
+      height: vh,
+      windowWidth: vw,
+      windowHeight: vh,
+      onclone: (clonedDoc) => {
+        clonedDoc.documentElement.scrollTop = sy;
+        clonedDoc.documentElement.scrollLeft = sx;
+      },
+    });
+    const vp = document.createElement('canvas');
+    vp.width = vw; vp.height = vh;
+    const vctx = vp.getContext('2d');
+    vctx.drawImage(raw, 0, 0, vw, vh, 0, 0, vw, vh);
+    return vp;
+  } catch (_) {
+    // Fallback: stylized section bands
+    const w = window.innerWidth, h = window.innerHeight;
+    const off = document.createElement('canvas');
+    off.width = w; off.height = h;
+    const ctx = off.getContext('2d');
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, w, h);
+    const sy = window.scrollY, vh = h;
+    const secs = [
+      { top: 0, h: vh, color: '#123A6F' },
+      { top: vh, h: vh * 0.6, color: '#F7F9FC' },
+      { top: vh * 1.6, h: vh * 0.9, color: '#FFFFFF' },
+      { top: vh * 2.5, h: vh * 2.8, color: '#F7F9FC' },
+      { top: vh * 5.3, h: vh * 2.5, color: '#FFFFFF' },
+      { top: vh * 7.8, h: vh * 1.3, color: '#FFFFFF' },
+      { top: vh * 9.1, h: vh * 1.5, color: '#F7F9FC' },
+      { top: vh * 10.6, h: vh * 1, color: '#FFFFFF' },
+      { top: vh * 11.6, h: vh * 0.8, color: '#123A6F' },
+    ];
+    secs.forEach(s => {
+      const y = s.top - sy;
+      if (y + s.h > 0 && y < vh) ctx.fillRect(0, Math.max(0, y), w, s.h);
+    });
+    return off;
+  }
 }
 
-function pixelDissolve(clickX, clickY) {
-  if (dissolving || prefersReduced) return;
+// ── Block builder with organic dissolve thresholds ────────────────────────
+function buildBlocks(w, h, originX, originY) {
+  const blocks = [];
+  const maxB = 12, minB = 3;
+  const maxDist = Math.hypot(w, h);
+  const ox2 = originX + (Math.random() - 0.5) * w * 0.6;
+  const oy2 = originY + (Math.random() - 0.5) * h * 0.4;
+
+  for (let y = 0; y < h; y += maxB) {
+    for (let x = 0; x < w; x += maxB) {
+      const bw = minB + Math.floor(Math.random() * (maxB - minB + 1));
+      const bh = minB + Math.floor(Math.random() * (maxB - minB + 1));
+      const cx = x + bw / 2, cy = y + bh / 2;
+      const d1 = Math.hypot(cx - originX, cy - originY);
+      const d2 = Math.hypot(cx - ox2, cy - oy2);
+      const distMix = d1 * 0.7 + d2 * 0.3;
+      const threshold =
+        (distMix / maxDist) * 0.50 + Math.random() * 0.30 + (cx / w) * 0.20;
+
+      blocks.push({
+        sx: x, sy: y, sw: bw, sh: bh, cx, cy,
+        threshold: Math.min(threshold, 0.93),
+        driftX: (Math.random() - 0.5) * 80,
+        driftY: -15 - Math.random() * 55,
+        rotation: (Math.random() - 0.5) * 0.8,
+        scaleEnd: 0.15 + Math.random() * 0.5,
+        glow: Math.random() < 0.12,
+      });
+    }
+  }
+  return blocks;
+}
+
+// ── Cinematic dissolve ────────────────────────────────────────────────────
+async function pixelDissolve(clickX, clickY) {
+  if (dissolving) return;
+  if (prefersReduced) { window.location.href = 'game.html'; return; }
   dissolving = true;
 
-  // Hide mascot
+  const w = dissolveCanvas.width, h = dissolveCanvas.height;
+
+  // ── 1. Capture viewport FIRST — user sees zero visual change ──
+  const capture = await capturePage();
+  const blocks = buildBlocks(w, h, clickX, clickY);
+
+  // ── 2. Pre-draw capture, then freeze page (compensate scrollbar) ──
+  dCtx.clearRect(0, 0, w, h);
+  dCtx.drawImage(capture, 0, 0);
+
+  const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
+  document.body.style.overflow = 'hidden';
+  if (scrollbarW > 0) document.body.style.paddingRight = `${scrollbarW}px`;
+
   mascot.classList.remove('mascot--visible');
   mascot.classList.add('mascot--hiding');
 
-  const w = dissolveCanvas.width;
-  const h = dissolveCanvas.height;
-  const blockSize = 12;
-  const cols = Math.ceil(w / blockSize);
-  const rows = Math.ceil(h / blockSize);
+  // ── 3. Reveal dissolve canvas (already shows the captured viewport) ──
+  dissolveCanvas.style.opacity = '1';
 
-  // Capture page
-  const pageCapture = capturePage();
-  dCtx.clearRect(0, 0, w, h);
+  // ── 4. Dissolve the captured viewport pixel-by-pixel ──
+  const transitionW = 0.30;
+  const master = { progress: 0 };
 
-  // Build pixel block array
-  const blocks = [];
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const bx = col * blockSize;
-      const by = row * blockSize;
-      const cx = bx + blockSize / 2;
-      const cy = by + blockSize / 2;
-      const dist = Math.hypot(cx - clickX, cy - clickY);
-      blocks.push({ bx, by, cx, cy, dist, row, col });
-    }
-  }
+  gsap.to(master, {
+    progress: 1,
+    duration: 2.8,
+    ease: 'power4.inOut',
+    onUpdate: () => {
+      const p = master.progress;
+      dCtx.clearRect(0, 0, w, h);
+      dCtx.drawImage(capture, 0, 0);
 
-  // Sort by distance from click (closest dissolve first)
-  blocks.sort((a, b) => a.dist - b.dist);
+      if (p > 0.3) {
+        const va = (p - 0.3) / 0.7 * 0.25;
+        const grd = dCtx.createRadialGradient(w / 2, h / 2, w * 0.35, w / 2, h / 2, w * 0.75);
+        grd.addColorStop(0, 'rgba(0,0,0,0)');
+        grd.addColorStop(1, `rgba(0,0,0,${va})`);
+        dCtx.fillStyle = grd;
+        dCtx.fillRect(0, 0, w, h);
+      }
 
-  const maxDist = Math.hypot(w, h);
-  const duration = 1200; // ms
-  const start = performance.now();
+      for (const b of blocks) {
+        const localT = (p - b.threshold) / transitionW;
+        if (localT <= 0) continue;
+        dCtx.clearRect(b.sx, b.sy, b.sw, b.sh);
+        if (localT >= 1) continue;
 
-  // Hide page content
-  document.body.style.overflow = 'hidden';
-
-  function animate(now) {
-    const elapsed = now - start;
-    const progress = Math.min(elapsed / duration, 1);
-
-    // Ease: cubic-bezier
-    const eased = progress < 0.5
-      ? 4 * progress * progress * progress
-      : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-
-    dCtx.clearRect(0, 0, w, h);
-
-    // Draw remaining blocks
-    const dissolveRadius = eased * maxDist * 1.3;
-
-    blocks.forEach(block => {
-      const localProgress = Math.max(0, Math.min(1, (dissolveRadius - block.dist) / (maxDist * 0.4)));
-      if (localProgress <= 0) {
-        // Draw the block from page capture
-        dCtx.drawImage(
-          pageCapture,
-          block.bx, block.by, blockSize, blockSize,
-          block.bx, block.by, blockSize, blockSize
-        );
-      } else {
-        // Dissolved: shrink, scatter, fade
-        const alpha = 1 - localProgress;
-        if (alpha <= 0) return;
-        const scale = 1 - localProgress;
-        const scatterX = (block.col % 2 === 0 ? 1 : -1) * localProgress * 40;
-        const scatterY = -localProgress * 60;
+        const alpha = 1 - localT;
+        const scale = 1 - localT * (1 - b.scaleEnd);
+        const dx = b.driftX * localT;
+        const dy = b.driftY * localT;
 
         dCtx.save();
         dCtx.globalAlpha = alpha;
-        dCtx.translate(block.cx + scatterX, block.cy + scatterY);
+        if (b.glow && localT < 0.3)
+          dCtx.globalAlpha = Math.min(1, alpha + (0.3 - localT) * 2);
+
+        dCtx.translate(b.cx + dx, b.cy + dy);
+        dCtx.rotate(b.rotation * localT);
         dCtx.scale(scale, scale);
-        dCtx.drawImage(
-          pageCapture,
-          block.bx, block.by, blockSize, blockSize,
-          -blockSize / 2, -blockSize / 2, blockSize, blockSize
-        );
+        dCtx.drawImage(capture, b.sx, b.sy, b.sw, b.sh, -b.sw / 2, -b.sh / 2, b.sw, b.sh);
         dCtx.restore();
       }
-    });
-
-    if (progress < 1) {
-      requestAnimationFrame(animate);
-    } else {
-      // Transition complete — show blank page
-      dCtx.clearRect(0, 0, w, h);
+    },
+    onComplete: () => {
       document.body.style.overflow = '';
-      dissolving = false;
-      setTimeout(() => {
-        dCtx.clearRect(0, 0, w, h);
-        // Reset mascot for replay
-        mascot.classList.remove('mascot--hiding');
-        if (mascotVisible) {
-          mascot.classList.add('mascot--visible');
-        }
-      }, 100);
+      document.body.style.paddingRight = '';
+      dissolveCanvas.style.opacity = '0';
+      window.location.href = 'game.html';
     }
-  }
-
-  requestAnimationFrame(animate);
+  });
 }
 
 mascot.addEventListener('click', (e) => {
   if (dissolving) return;
   const rect = mascot.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-  pixelDissolve(cx, cy);
+  pixelDissolve(rect.left + rect.width / 2, rect.top + rect.height / 2);
 });

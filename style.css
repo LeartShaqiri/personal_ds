@@ -480,6 +480,7 @@ ul { list-style: none; }
   height: 100vh;
   pointer-events: none;
   opacity: 0;
+  transition: opacity 0.5s ease;
 }
 
 /* ============================================
@@ -520,7 +521,8 @@ ul { list-style: none; }
 .mascot__sprite {
   width: 64px;
   height: 64px;
-  image-rendering: pixelated;
+  border-radius: 50%;
+  object-fit: cover;
   display: block;
   position: relative;
   z-index: 2;
