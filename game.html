@@ -151,6 +151,37 @@
     animation:blink 1.2s ease-in-out infinite;
   }
   @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+  /* ── Dialogue choices: response options the player can pick ── */
+  .dialogue-choices { display:none; margin-top:2px; }
+  .dialogue-choices.active { display:block; }
+  .dialogue-choice {
+    font-family:var(--font-body); font-size:clamp(10px,1.1vw,13px); font-weight:500;
+    color:var(--text-dim); padding:5px 8px; border-radius:8px; margin-top:2px;
+    transition:background 0.15s var(--ease), color 0.15s var(--ease);
+  }
+  .dialogue-choice.sel { background:rgba(0,87,184,0.10); color:var(--blue-dark); font-weight:700; }
+
+  /* ── Task bar: current objective + carried inventory, top of screen ── */
+  .taskbar {
+    position:absolute; top:clamp(10px,2.2vh,20px); left:50%; transform:translateX(-50%);
+    background:rgba(255,255,255,0.92); backdrop-filter:blur(10px);
+    border:1.5px solid rgba(0,87,184,0.15); border-radius:100px;
+    padding:8px 20px; z-index:14; pointer-events:none;
+    display:flex; align-items:center; gap:16px; white-space:nowrap;
+    box-shadow:0 6px 20px rgba(0,87,184,0.10);
+    opacity:0; transition:opacity 0.4s var(--ease);
+  }
+  .taskbar.show { opacity:1; }
+  .taskbar-task {
+    font-family:var(--font-display); font-size:clamp(9px,1vw,12px); font-weight:700;
+    letter-spacing:0.03em; color:var(--blue-dark);
+  }
+  .taskbar-inv {
+    font-family:var(--font-body); font-size:clamp(8px,0.85vw,10px); font-weight:600;
+    color:var(--text-dim); display:flex; gap:12px; border-left:1.5px solid rgba(0,87,184,0.15); padding-left:12px;
+  }
+  .taskbar-inv .qty { color:var(--blue); font-weight:800; }
 </style>
 </head>
 <body>
@@ -172,10 +203,16 @@
 
   <div class="end-fade" id="endFade"><div class="end-fade-text" id="endFadeText">The Journey Begins&hellip;</div></div>
 
+  <div class="taskbar" id="taskBar">
+    <div class="taskbar-task" id="taskBarText">&mdash;</div>
+    <div class="taskbar-inv" id="taskBarInv"></div>
+  </div>
+
   <div class="dialogue" id="dialogue">
     <div class="dialogue-name" id="dialogueName"></div>
     <div class="dialogue-text" id="dialogueText"></div>
-    <div class="dialogue-continue">&#9660; Press Enter</div>
+    <div class="dialogue-choices" id="dialogueChoices"></div>
+    <div class="dialogue-continue" id="dialogueContinue">&#9660; Press Enter</div>
   </div>
 </div>
 
@@ -207,13 +244,25 @@ function resize() {
 }
 resize();
 window.addEventListener('resize', resize);
+window.addEventListener('fullscreenchange', resize);
+
+// ── FULLSCREEN (requested on the player's first click/keypress — browsers require a user gesture) ──
+let fullscreenRequested = false;
+function tryFullscreen(){
+  if(fullscreenRequested) return; fullscreenRequested = true;
+  const el = document.documentElement;
+  if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+  else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+}
 
 const $ = s => document.querySelector(s);
 const diaBox = $('#dialogue'), diaText = $('#dialogueText'), diaName = $('#dialogueName');
+const diaChoices = $('#dialogueChoices'), diaContinue = $('#dialogueContinue');
 const cinematic = $('#cinematic');
 const historyScreen = $('#historyScreen'), historyCard = $('#historyCard'), historyYear = $('#historyYear'), historyText = $('#historyText');
 const yearFlash = $('#yearFlash');
 const endFade = $('#endFade'), endFadeText = $('#endFadeText');
+const taskBar = $('#taskBar'), taskBarText = $('#taskBarText'), taskBarInv = $('#taskBarInv');
 
 // ── AMBIENT AUDIO (procedural — no external assets) ──
 let actx=null, masterGain=null, audioReady=false;
@@ -318,10 +367,12 @@ window.addEventListener('click', unlockAudio, {once:true});
 const S = {
   intro:true, playing:false, dialogue:false,
   dialogueQueue:[], diaCb:null, diaSpeaker:'',
+  choiceOptions:null, choiceIndex:0, choiceSpeaker:'',
   px:140, py:0, vx:0, vy:0, facing:1, onGround:false, jumping:false,
   animFrame:0, animTimer:0,
   currentTask:0, taskProgress:0, taskTarget:0,
-  cowFed:false, metFarmer:false,
+  cowFed:false, metFarmer:false, milkHold:0,
+  inventory:{wheat:0, milk:0},
   camX:0, camY:0, particles:[], floatTexts:[], smoke:[], leaves:[], dust:[], keys:{}, levelComplete:false,
   time:0, villageLife:0, petCooldown:0,
 };
@@ -332,6 +383,7 @@ let map = [];
 let wheatItems = [], cowPositions = [], chickenPositions = [], sheepPositions = [], butterflies = [];
 let deliveryHouses = [], farmCow = null, farmerNPC = null;
 let worldObjects = [];
+let villagerPositions = [];
 
 function buildWorld() {
   map = Array.from({length:MAP_H}, () => Array(MAP_W).fill('.'));
@@ -340,10 +392,13 @@ function buildWorld() {
       if (y >= MAP_H-4) map[y][x] = 'G';
       if (y >= MAP_H-2) map[y][x] = 'D';
     }
-  for (let x=25; x<MAP_W; x++) { map[MAP_H-4][x] = 'R'; map[MAP_H-3][x] = 'R'; }
-  map[MAP_H-4][25] = 'G'; map[MAP_H-4][95] = 'G';
-
   for (let x=0; x<18; x+=2) map[MAP_H-4][x] = 'F';
+
+  // a worn dirt trail meandering through the grass, connecting the landmarks — not a full ground override
+  for (let x=20; x<98; x++) {
+    const w = Math.sin(x*0.35) + Math.sin(x*0.12+2);
+    if (w > 0.3) map[MAP_H-4][x] = 'R';
+  }
 
   for (let bx=3; bx<=9; bx++)
     for (let by=MAP_H-9; by<=MAP_H-5; by++)
@@ -368,18 +423,34 @@ function buildWorld() {
     worldObjects.push({type:'tree', variant:t, x:tx*TILE + TILE/2, seed:Math.random()*Math.PI*2});
   }
 
-  for (let i=0; i<22; i++) {
+  for (let i=0; i<34; i++) {
     const bx = 5 + Math.floor(Math.random()*90);
     worldObjects.push({type:'bush', x:bx*TILE + 4 + Math.random()*8});
   }
-  for (let i=0; i<14; i++) {
+  for (let i=0; i<22; i++) {
     const rx = 3 + Math.floor(Math.random()*94);
     worldObjects.push({type:'rock', x:rx*TILE + 2 + Math.random()*12});
   }
-  for (let i=0; i<50; i++) {
+  for (let i=0; i<80; i++) {
     const fx = 1 + Math.floor(Math.random()*98);
     worldObjects.push({type:'flower', x:fx*TILE + Math.random()*14, hue:Math.floor(Math.random()*3)});
   }
+  for (let i=0; i<55; i++) {
+    const gx = 1 + Math.floor(Math.random()*98);
+    worldObjects.push({type:'tallgrass', x:gx*TILE + Math.random()*15, tall:Math.random()>0.5});
+  }
+  for (let i=0; i<6; i++) {
+    const sx = 8 + Math.floor(Math.random()*88);
+    worldObjects.push({type:'stump', x:sx*TILE + Math.random()*10});
+  }
+
+  // ── Rocky hills — natural mounds with greenery, break up the flat grass line ──
+  worldObjects.push({type:'hill', x:44*TILE, seed:0.4});
+  worldObjects.push({type:'hill', x:95*TILE, seed:2.1});
+
+  // ── Fences flanking the wheat field, and a shallow stream crossing the countryside ──
+  for (let fx=13; fx<=20; fx+=2) worldObjects.push({type:'fence', x:fx*TILE});
+  worldObjects.push({type:'stream', x:90*TILE, w:26});
 
   // ── Farmstead set-pieces — a complete homestead, not just sprites on grass ──
   worldObjects.push({type:'windmill', x:1*TILE+10});
@@ -401,30 +472,99 @@ function buildWorld() {
     wheatItems.push({x:wx*TILE + TILE/2, y:(MAP_H-3)*TILE - 6, collected:false});
 
   cowPositions = [
-    {x:20, y:MAP_H-7, dir:1, anim:0}, {x:33, y:MAP_H-7, dir:-1, anim:20},
-    {x:52, y:MAP_H-7, dir:1, anim:40}, {x:63, y:MAP_H-7, dir:-1, anim:10},
+    {x:20, y:MAP_H-5.8, dir:1, anim:0}, {x:33, y:MAP_H-5.8, dir:-1, anim:20},
+    {x:52, y:MAP_H-5.8, dir:1, anim:40}, {x:63, y:MAP_H-5.8, dir:-1, anim:10},
   ];
-  farmCow = {x:6, y:MAP_H-6, dir:1, anim:0};
-  farmerNPC = {x:11, y:MAP_H-6, dir:-1, anim:0, talked:false};
+  farmCow = {x:6, y:MAP_H-5.8, dir:1, anim:0};
+  farmerNPC = {x:15.6, y:MAP_H-5.13, dir:-1, anim:0, talked:false};
 
   chickenPositions = [];
   for (let i=0; i<5; i++)
-    chickenPositions.push({x:8 + Math.random()*5, y:MAP_H-5, dir:Math.random()>0.5?1:-1, anim:Math.random()*60, peck:0});
+    chickenPositions.push({x:8 + Math.random()*5, y:MAP_H-4.88, dir:Math.random()>0.5?1:-1, anim:Math.random()*60, peck:0});
 
   sheepPositions = [];
   for (let i=0; i<4; i++)
-    sheepPositions.push({x:40 + Math.random()*20, y:MAP_H-5, dir:Math.random()>0.5?1:-1, anim:Math.random()*80});
+    sheepPositions.push({x:40 + Math.random()*20, y:MAP_H-5.22, dir:Math.random()>0.5?1:-1, anim:Math.random()*80});
 
   butterflies = [];
   for (let i=0; i<9; i++)
     butterflies.push({x:5 + Math.random()*90, baseY:MAP_H-6, phase:Math.random()*Math.PI*2, speed:0.4+Math.random()*0.5, wing:0});
 
   deliveryHouses = [{x:72, y:MAP_H-11}, {x:84, y:MAP_H-10}];
+
+  // ── Villagers — scattered along the route, greet the player and chat when you press E ──
+  const milkDelivered = () => S.currentTask>=4 || S.levelComplete;
+  villagerPositions = [
+    {x:31, y:MAP_H-5.13, dir:1, anim:Math.random()*60, name:'Vera', pal:{pants:'#5a4a5a',pantsHi:'#6a5a6a',shirt:'#8a5a6b',shirtHi:'#9c6b7c',hat:'#c9a860'},
+      greet:()=>milkDelivered()
+        ? ['Oh— hello again, mikë! That milk you brought round was the sweetest we\'ve had all year.', 'Bless you for it.']
+        : ['Oh, hello there, mikë! You must be the one helping Farmer Hashim.', 'Fresh milk, is there any to spare? My grandchildren have had none since yesterday.'],
+      choices:()=>[
+        {label:'Do you have any advice for a new farmhand?', response:['Patience, mikë. The land gives generously to those who tend it well.']},
+        {label:'How long have you lived in Istog?', response:['All my life, dear. I\'ve seen this valley through every season.']},
+        {label:'Just saying hello.', response:['A good day to you too, mikë.']},
+      ]},
+    {x:42, y:MAP_H-5.13, dir:-1, anim:Math.random()*60, name:'Driton', pal:{pants:'#3a3a3a',pantsHi:'#4a4a4a',shirt:'#2a4a6b',shirtHi:'#3a5c80',hat:'#8a6a42'},
+      greet:()=>['Devolli\'s bringing real change to this valley, you know.', 'Looking to grow the herd? My neighbour Zamir has a fine young cow for sale — just say the word.'],
+      choices:()=>[
+        {label:'Tell me more about that cow.', response:['Zamir\'s cow is young and healthy — ask him by the second house, he won\'t haggle much.']},
+        {label:'What do you think of the new dairy coming to town?', response:['Good for all of us, I reckon. More buyers, better prices.']},
+        {label:'Just passing through.', response:['Safe travels, then, mikë.']},
+      ]},
+    {x:53, y:MAP_H-5.13, dir:1, anim:Math.random()*60, name:'Elira', pal:{pants:'#e8ddc8',pantsHi:'#f0e8d8',shirt:'#c96a86',shirtHi:'#d87a96',hat:'#5a4a30'},
+      greet:()=>['Are you Farmer Hashim\'s helper? He says you\'re very fast!', 'Papa says one day there\'ll be a whole factory here, making milk for all of Kosovo!'],
+      choices:()=>[
+        {label:'Do you help your father on the farm?', response:['Every day! I feed the chickens and chase off the crows.']},
+        {label:'What\'s it like growing up here?', response:['It\'s wonderful — the hills, the animals, everyone knows everyone!']},
+        {label:'Just saying hi!', response:['Bye bye, mikë! Come play again soon!']},
+      ]},
+    {x:66, y:MAP_H-5.13, dir:-1, anim:Math.random()*60, name:'Naim', pal:{pants:'#4a3a2a',pantsHi:'#5a4a3a',shirt:'#5a6b3a',shirtHi:'#6c7c4a',hat:'#7a4a30'},
+      greet:()=>milkDelivered()
+        ? ['Thank you again for the milk, mikë — saved me a trip into town.']
+        : ['Careful round the shed there — those tools are older than I am.', 'Got any fresh milk on you? I\'d trade a sack of feed for a jug.'],
+      choices:()=>[
+        {label:'Any tips for milking?', response:['Gentle hands, steady rhythm. She\'ll tell you if you\'re doing it wrong!']},
+        {label:'What\'s in the shed?', response:['Old tools, spare wheels, and more cobwebs than I\'d like to admit.']},
+        {label:'Nothing, just passing by.', response:['Suit yourself, mikë.']},
+      ]},
+    {x:79, y:MAP_H-5.13, dir:1, anim:Math.random()*60, name:'Bukurie', pal:{pants:'#4a3550',pantsHi:'#5a4560',shirt:'#7a4a5a',shirtHi:'#8c5c6c',hat:'#d8c8a8'},
+      greet:()=>S.villageLife>=3
+        ? ['Welcome to our village! The children have been waving at every wagon since word got round.']
+        : ['Welcome, mikë. Not much happens here — but folks say that\'s about to change.'],
+      choices:()=>[
+        {label:'What\'s new in the village?', response:[S.villageLife>=3
+          ? 'Everyone\'s been talking about the fresh milk deliveries — it\'s the best news we\'ve had in ages.'
+          : 'Quiet as always, but folks are hopeful about the new dairy.']},
+        {label:'Do you know Farmer Hashim well?', response:['Since we were children. Best farmer this side of the mountains.']},
+        {label:'Just saying hello.', response:['Take care, mikë.']},
+      ]},
+    {x:91, y:MAP_H-5.13, dir:-1, anim:Math.random()*60, name:'Sanije', pal:{pants:'#3a4a4a',pantsHi:'#4a5c5c',shirt:'#3a6b6b',shirtHi:'#4a8080',hat:'#c9a860'},
+      greet:()=>['The stream runs clean and cold this time of year — good for the sheep.', 'They say Tetra Pak themselves are coming to Istog. Imagine that!'],
+      choices:()=>[
+        {label:'Do you tend the sheep by the stream?', response:['I do — the water keeps them cool and the grass is sweetest there.']},
+        {label:'Have you heard about Tetra Pak?', response:['Only rumours, but if it\'s true, this valley won\'t be the same.']},
+        {label:'Just say hi.', response:['And to you, mikë.']},
+      ]},
+  ];
 }
 buildWorld();
 
-// ── TASKS (targets only — no HUD, discovered through dialogue) ──
+// ── TASKS ──
 const TASK_TARGET = {1:6, 3:3, 4:2};
+const TASK_LABELS = {
+  0: ()=>'Find and talk to Farmer Hashim',
+  1: ()=>`Gather wheat (${S.taskProgress}/${TASK_TARGET[1]})`,
+  2: ()=>'Feed the cow — press E (needs wheat)',
+  3: ()=>`Milk the cow — hold E (${S.taskProgress}/${TASK_TARGET[3]})`,
+  4: ()=>`Sell milk in the village — press E (${S.taskProgress}/${TASK_TARGET[4]})`,
+};
+function updateTaskBar() {
+  if(!S.playing || S.intro || S.levelComplete){ taskBar.classList.remove('show'); return; }
+  const fn = TASK_LABELS[S.currentTask];
+  taskBarText.textContent = fn ? fn() : '';
+  taskBarInv.innerHTML = `Wheat <span class="qty">${S.inventory.wheat}</span> &nbsp; Milk <span class="qty">${S.inventory.milk}</span>`;
+  taskBar.classList.add('show');
+}
 
 // ── PLAYER ──
 const PW=14, PH=18, GRAVITY=0.4, SPEED=1.4, JUMP=-4.4;
@@ -452,23 +592,24 @@ function drawPlayer(px, py) {
   ctx.fillStyle='#8B6914'; ctx.fillRect(bx+1, by-PH+11, 12, 3); ctx.fillRect(bx+3, by-PH+13, 8, 2);
 }
 
-// ── FARMER NPC (idle, warm — the human heart of the story) ──
-function drawFarmer(sx, sy, dir, anim) {
+// ── FARMER NPC (idle, warm — the human heart of the story) ── pal lets villagers reuse this sprite recolored
+function drawFarmer(sx, sy, dir, anim, pal) {
+  const c = Object.assign({pants:'#4a3520',pantsHi:'#5a4a30',shirt:'#6b4a2e',shirtHi:'#7c5a3a',collar:'#e8ddc8',sleeve:'#c9b896',skin:'#c9a876',skinHi:'#d8d0c0',hat:'#c9a860'}, pal);
   const bob = Math.sin(anim*0.05)*1;
   const bx = sx, by = sy + bob;
   ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(bx-2, by+PH-1, PW+4, 3);
-  ctx.fillStyle='#4a3520'; ctx.fillRect(bx+3, by+PH-4, 4, 4); ctx.fillRect(bx+8, by+PH-4, 4, 4);
-  ctx.fillStyle='#5a4a30'; ctx.fillRect(bx+3, by+PH-8, 4, 5); ctx.fillRect(bx+8, by+PH-8, 4, 5);
-  ctx.fillStyle='#6b4a2e'; ctx.fillRect(bx+2, by+4, 10, 10);
-  ctx.fillStyle='#7c5a3a'; ctx.fillRect(bx+3, by+7, 8, 2);
-  ctx.fillStyle='#e8ddc8'; ctx.fillRect(bx+2, by+1, 10, 4);
-  ctx.fillStyle='#c9b896'; ctx.fillRect(bx, by+4, 2, 5); ctx.fillRect(bx+PW-2, by+4, 2, 5);
-  ctx.fillStyle='#c9b896'; ctx.fillRect(bx-1, by+8, 3, 2); ctx.fillRect(bx+PW-2, by+8, 3, 2);
-  ctx.fillStyle='#c9a876'; ctx.fillRect(bx+3, by-PH+14, 8, 8);
-  ctx.fillStyle='#d8d0c0'; ctx.fillRect(bx+3, by-PH+14, 8, 2);
+  ctx.fillStyle=c.pants; ctx.fillRect(bx+3, by+PH-4, 4, 4); ctx.fillRect(bx+8, by+PH-4, 4, 4);
+  ctx.fillStyle=c.pantsHi; ctx.fillRect(bx+3, by+PH-8, 4, 5); ctx.fillRect(bx+8, by+PH-8, 4, 5);
+  ctx.fillStyle=c.shirt; ctx.fillRect(bx+2, by+4, 10, 10);
+  ctx.fillStyle=c.shirtHi; ctx.fillRect(bx+3, by+7, 8, 2);
+  ctx.fillStyle=c.collar; ctx.fillRect(bx+2, by+1, 10, 4);
+  ctx.fillStyle=c.sleeve; ctx.fillRect(bx, by+4, 2, 5); ctx.fillRect(bx+PW-2, by+4, 2, 5);
+  ctx.fillStyle=c.sleeve; ctx.fillRect(bx-1, by+8, 3, 2); ctx.fillRect(bx+PW-2, by+8, 3, 2);
+  ctx.fillStyle=c.skin; ctx.fillRect(bx+3, by-PH+14, 8, 8);
+  ctx.fillStyle=c.skinHi; ctx.fillRect(bx+3, by-PH+14, 8, 2);
   const ex = dir===1?bx+8:bx+4;
   ctx.fillStyle='#1a0a00'; ctx.fillRect(ex, by-PH+18, 2, 2);
-  ctx.fillStyle='#c9a860'; ctx.fillRect(bx, by-PH+11, 14, 2); ctx.fillRect(bx+2, by-PH+9, 10, 3);
+  ctx.fillStyle=c.hat; ctx.fillRect(bx, by-PH+11, 14, 2); ctx.fillRect(bx+2, by-PH+9, 10, 3);
 }
 
 // ── ANIMALS ──
@@ -515,8 +656,9 @@ function drawButterfly(bx, by, wing, hue) {
 
 // ── ENVIRONMENT DRAWING ──
 function groundShadow(sx, gy, w) {
-  ctx.fillStyle='rgba(20,25,10,0.20)';
-  ctx.fillRect(sx-w/2, gy-3, w, 4);
+  // soft two-tier blob instead of a hard rectangle — reads as contact AO, not a pasted-on sticker
+  ctx.fillStyle='rgba(20,28,12,0.10)'; ctx.fillRect(sx-w/2-1, gy-4, w+2, 5);
+  ctx.fillStyle='rgba(20,28,12,0.22)'; ctx.fillRect(sx-w/2+2, gy-3, w-4, 4);
 }
 
 function drawTree(sx, sy, v, sway) {
@@ -538,6 +680,50 @@ function drawTree(sx, sy, v, sway) {
     ctx.fillStyle='#4a8030'; ctx.fillRect(cx-7, sy-4, 14, 16);
     ctx.fillStyle='#5a903a'; ctx.fillRect(cx-4, sy-6, 8, 12);
   }
+}
+
+function drawRockyHill(sx, gy, seed) {
+  seed = seed||0;
+  groundShadow(sx, gy, 78);
+  // stacked, unevenly-offset bands fake a rounded natural mound instead of a block
+  const bands = [
+    {w:70, h:11, dx:0,  c:'#8a8478'},
+    {w:60, h:10, dx:-3, c:'#948877'},
+    {w:48, h:10, dx:4,  c:'#a0947e'},
+    {w:36, h:9,  dx:-2, c:'#ab9d84'},
+    {w:22, h:8,  dx:2,  c:'#b6a88c'},
+  ];
+  let y = gy;
+  for (const b of bands) {
+    y -= b.h;
+    ctx.fillStyle = b.c;
+    ctx.fillRect(sx-b.w/2+b.dx, y, b.w, b.h);
+  }
+  // jagged rock chunks broken off the silhouette so it doesn't read as blocky
+  ctx.fillStyle='#767064';
+  ctx.fillRect(sx-33, gy-9, 7, 9); ctx.fillRect(sx+24, gy-7, 8, 7); ctx.fillRect(sx-12, gy-45, 6, 7);
+  ctx.fillStyle='#a2947f';
+  ctx.fillRect(sx-27, gy-16, 5, 6); ctx.fillRect(sx+17, gy-22, 6, 6); ctx.fillRect(sx-3, gy-40, 5, 5);
+  ctx.fillStyle='#6a655a';
+  ctx.fillRect(sx-20, gy-6, 4, 3); ctx.fillRect(sx+8, gy-4, 4, 3);
+
+  // greenery: moss patches down the slope + grass crown + a bush clinging to the side
+  ctx.fillStyle='#5a8a3e';
+  ctx.fillRect(sx-24, gy-20, 8, 5); ctx.fillRect(sx+10, gy-14, 9, 5); ctx.fillRect(sx-4, gy-32, 7, 5);
+  ctx.fillStyle='#6a9a48';
+  ctx.fillRect(sx-22, gy-21, 5, 3); ctx.fillRect(sx+12, gy-15, 5, 3);
+  ctx.fillStyle='#4a7a30'; ctx.fillRect(sx-7, gy-42, 12, 6);
+  ctx.fillStyle='#5a9038'; ctx.fillRect(sx-5, gy-44, 8, 5);
+  for (let i=0; i<6; i++) {
+    const tx = -30 + i*11 + Math.sin(seed+i)*3;
+    const ty = -18 - (i%3)*7;
+    const sway = Math.sin(S.time*0.03 + seed + i)*0.8;
+    ctx.fillStyle='#6a9a48'; ctx.fillRect(sx+tx+sway, gy+ty, 2, 5);
+    ctx.fillStyle='#7aaa54'; ctx.fillRect(sx+tx+sway, gy+ty-2, 2, 3);
+  }
+  const bx = sx-30, by = gy-6;
+  ctx.fillStyle='#5a8a3e'; ctx.fillRect(bx-5, by-7, 10, 7);
+  ctx.fillStyle='#6a9a48'; ctx.fillRect(bx-3, by-9, 6, 4);
 }
 
 function drawWindmill(sx, gy, time) {
@@ -624,82 +810,148 @@ function drawCarrotPatch(sx, gy) {
   ctx.fillStyle='#e88030'; ctx.fillRect(sx-4, gy-2, 2, 3); ctx.fillRect(sx+1, gy-2, 2, 3);
 }
 
+function drawFence(sx, gy) {
+  ctx.fillStyle='rgba(20,25,10,0.15)'; ctx.fillRect(sx-9, gy-1, 18, 2);
+  ctx.fillStyle='#8a6a42'; ctx.fillRect(sx-9, gy-14, 3, 14); ctx.fillRect(sx+6, gy-14, 3, 14);
+  ctx.fillStyle='#a08050'; ctx.fillRect(sx-9, gy-14, 1, 14); ctx.fillRect(sx+6, gy-14, 1, 14);
+  ctx.fillStyle='#7a5c38'; ctx.fillRect(sx-11, gy-11, 22, 3); ctx.fillRect(sx-11, gy-5, 22, 3);
+  ctx.fillStyle='#8a6a42'; ctx.fillRect(sx-11, gy-11, 22, 1); ctx.fillRect(sx-11, gy-5, 22, 1);
+}
+
+function drawStump(sx, gy) {
+  groundShadow(sx, gy, 14);
+  ctx.fillStyle='#6b4226'; ctx.fillRect(sx-7, gy-9, 14, 9);
+  ctx.fillStyle='#c9a876'; ctx.fillRect(sx-6, gy-9, 12, 3);
+  ctx.fillStyle='#b8945e'; ctx.fillRect(sx-3, gy-8, 6, 1); ctx.fillRect(sx-5, gy-7, 10, 1);
+  ctx.fillStyle='#5a8a3e'; ctx.fillRect(sx+5, gy-10, 3, 3);
+}
+
+function drawTallGrass(sx, gy, sway, tall) {
+  const h = tall ? 11 : 7;
+  ctx.fillStyle='#4f8a3a';
+  ctx.fillRect(sx-3+sway*0.4, gy-h, 2, h); ctx.fillRect(sx+2-sway*0.6, gy-h+2, 2, h-2); ctx.fillRect(sx-1+sway, gy-h-2, 2, h+2);
+  ctx.fillStyle='#5fa048';
+  ctx.fillRect(sx-1+sway, gy-h-2, 2, 4);
+}
+
+function drawStream(sx, gy, w) {
+  ctx.fillStyle='#6a5638'; ctx.fillRect(sx-w/2-2, gy-5, w+4, 7);
+  const shimmer = (S.time*0.06)%1;
+  const g = ctx.createLinearGradient(sx-w/2, gy, sx+w/2, gy);
+  g.addColorStop(0,'#4a7ea8'); g.addColorStop(Math.max(0,shimmer-0.1),'#5a8eb8'); g.addColorStop(shimmer,'#a8d4ec'); g.addColorStop(Math.min(1,shimmer+0.1),'#5a8eb8'); g.addColorStop(1,'#4a7ea8');
+  ctx.fillStyle=g; ctx.fillRect(sx-w/2, gy-4, w, 5);
+  ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.fillRect(sx-w/2+4, gy-3, w-8, 1);
+  ctx.fillStyle='#9c9282'; ctx.fillRect(sx-w/4-2, gy-4, 5, 3); ctx.fillRect(sx+w/5, gy-3, 4, 2);
+}
+
 function drawTile(t,sx,sy,tx,ty) {
-  const S=TILE;
+  const TS=TILE;
   switch(t) {
-    case 'G': { ctx.fillStyle='#82b45a'; ctx.fillRect(sx,sy,S,S);
-              ctx.fillStyle='#72a44a'; ctx.fillRect(sx,sy,S,3);
+    case 'G': { const gv=(tx*13+ty*7)%5;
+              ctx.fillStyle=gv<2?'#82b45a':gv<4?'#78ab52':'#8cbc62'; ctx.fillRect(sx,sy,TS,TS);
+              ctx.fillStyle='#72a44a'; ctx.fillRect(sx,sy,TS,3);
               const gsway = Math.sin(S.time*0.04 + tx*0.6)*1.2;
               if((tx+ty)%3===0){ctx.fillStyle='#92c46a';ctx.fillRect(sx+4+gsway,sy-2,2,4);}
-              if((tx+ty)%4===1){ctx.fillStyle='#92c46a';ctx.fillRect(sx+12+gsway,sy-1,2,3);} break; }
-    case 'D': ctx.fillStyle='#9B8030'; ctx.fillRect(sx,sy,S,S);
-              ctx.fillStyle='#806820'; ctx.fillRect(sx,sy,S,4);
-              if((tx+ty)%5===0){ctx.fillStyle='#ab9040';ctx.fillRect(sx+4,sy+8,2,2);} break;
-    case 'F': ctx.fillStyle='#82b45a'; ctx.fillRect(sx,sy,S,S);
+              if((tx+ty)%4===1){ctx.fillStyle='#92c46a';ctx.fillRect(sx+12+gsway,sy-1,2,3);}
+              if((tx+ty)%7===2){ctx.fillStyle='#6a9c42';ctx.fillRect(sx+8+gsway*0.5,sy-1,2,3);} break; }
+    case 'D': { const dv=(tx*11+ty*17)%4;
+              ctx.fillStyle=dv===0?'#9B8030':dv===1?'#8f7529':'#a68a38'; ctx.fillRect(sx,sy,TS,TS);
+              ctx.fillStyle='#806820'; ctx.fillRect(sx,sy,TS,4);
+              ctx.fillStyle='rgba(60,42,16,0.18)'; ctx.fillRect(sx,sy+11,TS,2);
+              if((tx+ty)%5===0){ctx.fillStyle='#ab9040';ctx.fillRect(sx+4,sy+8,2,2);}
+              if((tx+ty)%6===3){ctx.fillStyle='#c0a850';ctx.fillRect(sx+10,sy+3,2,2);} break; }
+    case 'F': ctx.fillStyle='#82b45a'; ctx.fillRect(sx,sy,TS,TS);
               ctx.fillStyle='#8B6914'; ctx.fillRect(sx+6,sy-6,4,22); ctx.fillRect(sx+1,sy+6,14,2); ctx.fillRect(sx+1,sy+12,14,2); break;
-    case 'B': ctx.fillStyle='#c8a878'; ctx.fillRect(sx,sy,S,S);
-              ctx.fillStyle='#d8b888'; if((tx+ty)%2===0)ctx.fillRect(sx+1,sy+4,S-2,2);
-              if(ty===MAP_H-9){ctx.fillStyle='#0057B8';ctx.fillRect(sx-2,sy,S+4,5);} break;
-    case 'W': ctx.fillStyle='#8a7a20'; ctx.fillRect(sx,sy,S,S);
+    case 'B': ctx.fillStyle='#c8a878'; ctx.fillRect(sx,sy,TS,TS);
+              ctx.fillStyle='#d8b888'; if((tx+ty)%2===0)ctx.fillRect(sx+1,sy+4,TS-2,2);
+              if(ty===MAP_H-9){ctx.fillStyle='#0057B8';ctx.fillRect(sx-2,sy,TS+4,5);} break;
+    case 'W': ctx.fillStyle='#8a7a20'; ctx.fillRect(sx,sy,TS,TS);
               ctx.fillStyle='#b89830';ctx.fillRect(sx+2,sy+2,2,8);ctx.fillRect(sx+8,sy+3,2,7);ctx.fillRect(sx+13,sy+1,2,9); break;
-    case 'H': ctx.fillStyle='#f8f6f0'; ctx.fillRect(sx,sy,S,S);
+    case 'H': ctx.fillStyle='#f8f6f0'; ctx.fillRect(sx,sy,TS,TS);
               if((tx>=71&&tx<=73||tx>=83&&tx<=85)&&(ty===MAP_H-9||ty===MAP_H-7)){
                 ctx.fillStyle=window.__villageLife>=3?'#ffe9a8':'#c8ddf0';ctx.fillRect(sx+4,sy+4,8,8);
                 ctx.fillStyle='#0057B8';ctx.fillRect(sx+4,sy+4,8,1);ctx.fillRect(sx+4,sy+4,1,8);ctx.fillRect(sx+7,sy+4,1,8);}
-              if(ty===MAP_H-10){ctx.fillStyle='#0057B8';ctx.fillRect(sx-2,sy,S+4,4);ctx.fillRect(sx,sy-2,S,4);} break;
-    case 'R': ctx.fillStyle='#b09840'; ctx.fillRect(sx,sy,S,S);
-              ctx.fillStyle='#a08830'; ctx.fillRect(sx,sy+4,S,2);
-              if((tx+ty)%4===0){ctx.fillStyle='#c0a850';ctx.fillRect(sx+3,sy+2,3,2);} break;
+              if(ty===MAP_H-10){ctx.fillStyle='#0057B8';ctx.fillRect(sx-2,sy,TS+4,4);ctx.fillRect(sx,sy-2,TS,4);} break;
+    case 'R': ctx.fillStyle='#b09840'; ctx.fillRect(sx,sy,TS,TS);
+              ctx.fillStyle='#a08830'; ctx.fillRect(sx,sy+4,TS,2);
+              if((tx+ty)%4===0){ctx.fillStyle='#c0a850';ctx.fillRect(sx+3,sy+2,3,2);}
+              // grass fringe so the path blends into the surrounding field instead of a hard edge
+              if(map[ty-1] && map[ty-1][tx]!=='R'){ctx.fillStyle='#72a44a';ctx.fillRect(sx,sy,TS,2);}
+              if(map[ty] && map[ty][tx-1]!=='R' && map[ty][tx-1]!=='H' && map[ty][tx-1]!=='B'){ctx.fillStyle='#82b45a';ctx.fillRect(sx,sy,2,TS);}
+              if(map[ty] && map[ty][tx+1]!=='R' && map[ty][tx+1]!=='H' && map[ty][tx+1]!=='B'){ctx.fillStyle='#82b45a';ctx.fillRect(sx+TS-2,sy,2,TS);} break;
   }
 }
 
-function drawWorld(cx, cy) {
-  const g1 = ctx.createLinearGradient(0,0,0,GH*0.6);
-  g1.addColorStop(0,'#3a6fb8'); g1.addColorStop(0.5,'#6898d8'); g1.addColorStop(1,'#90b8e8');
-  ctx.fillStyle=g1; ctx.fillRect(0,0,GW,GH*0.6);
-  const g2 = ctx.createLinearGradient(0,GH*0.6,0,GH);
-  g2.addColorStop(0,'#90b8e8'); g2.addColorStop(0.3,'#c8ddf0'); g2.addColorStop(0.7,'#eaf4ff'); g2.addColorStop(1,'#dcecf8');
-  ctx.fillStyle=g2; ctx.fillRect(0,GH*0.6,GW,GH*0.4);
+// a continuous ridge silhouette (single filled path, not stacked columns) so it reads as terrain, not a skyline
+function drawRidge(cx, baseY, amp1, amp2, freq1, freq2, phase, parallax, step, color) {
+  const camOff = cx*parallax;
+  ctx.beginPath();
+  ctx.moveTo(-4, GH+10);
+  for (let sx=-4; sx<=GW+4; sx+=step) {
+    const wx = sx + camOff;
+    const h = baseY - Math.sin((wx+phase)*freq1)*amp1 - Math.sin((wx+phase)*freq2)*amp2;
+    ctx.lineTo(sx, h);
+  }
+  ctx.lineTo(GW+4, GH+10);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+function fogBand(y0, y1, alpha) {
+  const fog = ctx.createLinearGradient(0, y0, 0, y1);
+  fog.addColorStop(0, 'rgba(225,238,236,0)'); fog.addColorStop(0.5, `rgba(225,238,236,${alpha})`); fog.addColorStop(1, 'rgba(225,238,236,0)');
+  ctx.fillStyle=fog; ctx.fillRect(0, y0, GW, y1-y0);
+}
 
-  const sunX = 320 - cx*0.05, sunY = 28;
+function drawWorld(cx, cy) {
+  // crisp sky only occupies the top third — the rest of the frame is layered terrain, not empty blue.
+  // one continuous gradient (not two abutting rects) so there's no seam at the join.
+  const sky = ctx.createLinearGradient(0,0,0,GH);
+  sky.addColorStop(0,'#2f5fa8'); sky.addColorStop(0.19,'#5f8fd0'); sky.addColorStop(0.34,'#8fb8e6');
+  sky.addColorStop(0.46,'#bcd8ec'); sky.addColorStop(0.66,'#dcecdc'); sky.addColorStop(1,'#c8dcc0');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,GW,GH);
+
+  const sunX = 320 - cx*0.05, sunY = 24;
   ctx.fillStyle='rgba(255,252,235,0.3)'; ctx.fillRect(sunX-12, sunY-12, 28, 28);
   ctx.fillStyle='#fffdf0'; ctx.fillRect(sunX-6, sunY-6, 14, 14);
   ctx.fillStyle='#ffffff'; ctx.fillRect(sunX-3, sunY-3, 8, 8);
+  // soft sunlight glow washing down across the whole scene
+  const sunGlow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 240);
+  sunGlow.addColorStop(0, 'rgba(255,248,222,0.22)'); sunGlow.addColorStop(1, 'rgba(255,248,222,0)');
+  ctx.fillStyle=sunGlow; ctx.fillRect(0,0,GW,GH);
 
   for (let i=0; i<6; i++) {
     const clX = ((i*120 + S.time*0.08 + 200) % (GW+200)) - 100 - cx*0.1;
-    const clY = 15 + i*18;
-    const w = 20 + i*12;
-    ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.fillRect(clX, clY, w, 8);
-    ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.fillRect(clX+4, clY-4, w-6, 6);
-    ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.fillRect(clX+2, clY+4, w-4, 3);
+    const clY = 10 + i*11;
+    const w = 18 + i*10;
+    ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.fillRect(clX, clY, w, 7);
+    ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.fillRect(clX+4, clY-3, w-6, 5);
+    ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.fillRect(clX+2, clY+3, w-4, 3);
   }
 
-  // far, hazy purple peaks — greatest depth
-  for (let mx=-24; mx<GW+70; mx+=14) {
-    const mxA = mx - (cx*0.06)%14;
-    const mh = 46 + Math.sin(mx*0.09)*22 + Math.sin(mx*0.04)*16;
-    ctx.fillStyle='#8a8ab0'; ctx.fillRect(mxA, GH-mh+52, 14, mh);
+  // ── layered depth: far mountains → rolling hills → forest silhouette → farmland, each its own parallax speed ──
+  drawRidge(cx, 96, 20, 13, 0.045, 0.019, 0,   0.05, 6, '#8a8fbc');
+  fogBand(78, 118, 0.30);
+  drawRidge(cx, 128, 15, 11, 0.05, 0.024,  40,  0.13, 6, '#8fae7a');
+  drawRidge(cx, 152, 13, 8,  0.06, 0.03,   90,  0.20, 5, '#79a566');
+  fogBand(132, 168, 0.22);
+  // forest silhouette — a smooth ridge base with a fine jagged crown texture riding on top
+  drawRidge(cx, 176, 8, 5, 0.07, 0.035, 15, 0.32, 4, '#3d6132');
+  ctx.fillStyle='#2f4f26';
+  for (let mx=-10; mx<GW+10; mx+=5) {
+    const wx = mx + cx*0.32;
+    const base = 176 - Math.sin((wx+15)*0.07)*8 - Math.sin((wx+15)*0.035)*5;
+    const bump = 2 + ((Math.sin(wx*1.3)+1)*2);
+    ctx.fillRect(mx, base-bump, 3, bump+2);
   }
-  for (let mx=-20; mx<GW+60; mx+=10) {
-    const mxA = mx - (cx*0.15)%10;
-    const mh = 35 + Math.sin(mx*0.12)*18 + Math.sin(mx*0.06)*25;
-    ctx.fillStyle='#c0dcc0'; ctx.fillRect(mxA, GH-mh+48, 10, mh);
-  }
-  for (let mx=-15; mx<GW+50; mx+=8) {
-    const mxA = mx - (cx*0.3)%8;
-    const mh = 24 + Math.sin(mx*0.18+1)*14 + Math.sin(mx*0.08)*20;
-    ctx.fillStyle='#9cc89c'; ctx.fillRect(mxA, GH-mh+44, 8, mh);
-  }
-  // atmospheric fog band where mid mountains meet the near hills
-  const fog = ctx.createLinearGradient(0, GH*0.42, 0, GH*0.62);
-  fog.addColorStop(0, 'rgba(220,235,235,0)'); fog.addColorStop(0.5, 'rgba(220,235,235,0.35)'); fog.addColorStop(1, 'rgba(220,235,235,0)');
-  ctx.fillStyle=fog; ctx.fillRect(0, GH*0.42, GW, GH*0.2);
-  for (let mx=-10; mx<GW+40; mx+=6) {
+  // farmland strip — a thin band of gently rolling fields with faint plowed-row striping
+  drawRidge(cx, 200, 5, 3, 0.09, 0.045, 60, 0.5, 5, '#8caa54');
+  ctx.fillStyle='rgba(70,92,42,0.30)';
+  for (let mx=-6; mx<GW+6; mx+=6) {
     const mxA = mx - (cx*0.5)%6;
-    const mh = 16 + Math.sin(mx*0.22+2)*10 + Math.sin(mx*0.1)*14;
-    ctx.fillStyle='#7ab87a'; ctx.fillRect(mxA, GH-mh+40, 6, mh);
+    ctx.fillRect(mxA, 197, 1, 9);
   }
+  fogBand(184, 206, 0.14);
 
   const stx=Math.max(0,Math.floor(cx/TILE)-1), etx=Math.min(MAP_W,Math.ceil((cx+GW)/TILE)+1);
   const sty=Math.max(0,Math.floor(cy/TILE)-1), ety=Math.min(MAP_H,Math.ceil((cy+GH)/TILE)+1);
@@ -713,6 +965,24 @@ function drawWorld(cx, cy) {
 
   // groundSy = screen-y of the grass surface line — every ground object's feet sit here
   const groundSy = GH - 4*TILE - cy;
+
+  // soil cross-section: roots dangling from the grass roof, pebbles and strata bands in the dirt below —
+  // makes the cut edge under the world read as real earth instead of a flat brown slab
+  if (map[MAP_H-2]) {
+    const seamSy = groundSy + 2*TILE;
+    const strata = ctx.createLinearGradient(0, seamSy, 0, seamSy+2*TILE);
+    strata.addColorStop(0, 'rgba(60,40,18,0.12)'); strata.addColorStop(1, 'rgba(40,26,10,0.28)');
+    ctx.fillStyle = strata; ctx.fillRect(0, seamSy, GW, 2*TILE);
+    for (let tx=stx; tx<etx; tx++) {
+      const sx = tx*TILE - cx;
+      const h = ((tx*37+13)%9);
+      ctx.fillStyle='#6b4a2a';
+      if (h<2) { ctx.fillRect(sx+3, seamSy, 2, 6+h*3); ctx.fillRect(sx+9-h, seamSy, 1, 4+h*2); }
+      else if (h<4) { ctx.fillRect(sx+7, seamSy, 2, 5); }
+      if (h===5) { ctx.fillStyle='#8a7a68'; ctx.fillRect(sx+5, seamSy+7, 3, 3); ctx.fillStyle='#6a5c4e'; ctx.fillRect(sx+5, seamSy+9, 3, 1); }
+      if (h===7) { ctx.fillStyle='#9c8c78'; ctx.fillRect(sx+9, seamSy+14, 4, 3); }
+    }
+  }
   const FLOWER_HUES = [['#ffd040','#fff8b0'],['#ff6a9c','#ffc0d8'],['#8a6aff','#c8b8ff']];
   for (const obj of worldObjects) {
     const sx=obj.x-cx;
@@ -738,6 +1008,14 @@ function drawWorld(cx, cy) {
       ctx.fillStyle=hue[0]; ctx.fillRect(sx, groundSy-2, 2, 2);
       ctx.fillStyle=hue[1]; ctx.fillRect(sx, groundSy-3, 1, 1);
     }
+    else if (obj.type==='hill') drawRockyHill(sx, groundSy, obj.seed);
+    else if (obj.type==='fence') drawFence(sx, groundSy);
+    else if (obj.type==='stump') drawStump(sx, groundSy);
+    else if (obj.type==='tallgrass') {
+      const sway = Math.sin(S.time*0.05 + sx*0.15)*1.6;
+      drawTallGrass(sx, groundSy, sway, obj.tall);
+    }
+    else if (obj.type==='stream') drawStream(sx, groundSy, obj.w);
     else if (obj.type==='windmill') drawWindmill(sx, groundSy, S.time);
     else if (obj.type==='well') drawWell(sx, groundSy);
     else if (obj.type==='hay') drawHayBale(sx, groundSy);
@@ -801,6 +1079,13 @@ function drawWorld(cx, cy) {
   farmerNPC.anim++;
   const fnSX = farmerNPC.x*TILE-cx;
   if (fnSX>-30 && fnSX<GW+30) drawFarmer(fnSX, groundY + farmerNPC.y*TILE, farmerNPC.dir, farmerNPC.anim);
+
+  // villagers — scattered folks with small talk, greeted via E
+  for (const v of villagerPositions) {
+    v.anim++;
+    const vsx = v.x*TILE - cx;
+    if (vsx>-30 && vsx<GW+30) drawFarmer(vsx, groundY + v.y*TILE, v.dir, v.anim, v.pal);
+  }
 
   farmCow.anim++;
   const fcSX = farmCow.x*TILE - cx;
@@ -879,14 +1164,44 @@ function drawParticles() {
 }
 
 // ── DIALOGUE ──
+const DIA_CONTINUE_DEFAULT = diaContinue.innerHTML;
 function showDialogue(texts,speaker,cb) {
   S.dialogue=true; S.dialogueQueue=Array.isArray(texts)?texts:[texts]; S.diaCb=cb||null;
+  S.choiceOptions=null; diaChoices.classList.remove('active'); diaText.style.display='';
+  diaContinue.innerHTML=DIA_CONTINUE_DEFAULT;
   diaBox.classList.add('active'); diaName.textContent=speaker||''; diaText.textContent=S.dialogueQueue[0];
 }
 function advanceDialogue() {
   S.dialogueQueue.shift();
   if(S.dialogueQueue.length>0) diaText.textContent=S.dialogueQueue[0];
   else { S.dialogue=false; diaBox.classList.remove('active'); if(S.diaCb){const c=S.diaCb;S.diaCb=null;c();} }
+}
+
+// ── DIALOGUE CHOICES: a short list of responses the player can pick with Up/Down + Enter, or 1-9 ──
+function showChoices(options, speaker) {
+  S.dialogue=true; S.choiceOptions=options; S.choiceIndex=0; S.choiceSpeaker=speaker||'';
+  diaBox.classList.add('active'); diaName.textContent=speaker||'';
+  diaText.style.display='none';
+  diaContinue.textContent='▲▼ Choose · Enter Select';
+  diaChoices.classList.add('active');
+  renderChoices();
+}
+function renderChoices() {
+  diaChoices.innerHTML = S.choiceOptions.map((o,i)=>
+    `<div class="dialogue-choice${i===S.choiceIndex?' sel':''}">${i+1}. ${o.label}</div>`).join('');
+}
+function moveChoice(delta) {
+  if(!S.choiceOptions) return;
+  S.choiceIndex = (S.choiceIndex + delta + S.choiceOptions.length) % S.choiceOptions.length;
+  renderChoices();
+}
+function confirmChoice(idx) {
+  if(!S.choiceOptions) return;
+  const opt = S.choiceOptions[idx!==undefined ? idx : S.choiceIndex];
+  if(!opt) return;
+  const speaker = S.choiceSpeaker;
+  S.choiceOptions=null; diaChoices.classList.remove('active'); diaText.style.display='';
+  showDialogue(opt.response, speaker, ()=>{});
 }
 
 // ── STORY PANELS (historical interludes) ──
@@ -905,25 +1220,26 @@ function completeTask(idx) {
       'Ah— good morning, mikunë. Another day, another sunrise over Istog.',
       'These hands have milked cows since before you were born. But today feels different somehow.',
       'Would you lend me a hand today? Start by gathering some wheat from the field — the cows are hungry.'
-    ],'Farmer Hashim',()=>{S.currentTask=1;S.taskProgress=0;S.taskTarget=TASK_TARGET[1];});
+    ],'Farmer Hashim',()=>{S.currentTask=1;S.taskProgress=0;S.taskTarget=TASK_TARGET[1];updateTaskBar();});
   }
   else if(idx===1){
     S.villageLife=2;
-    showDialogue(['Good, good — that’s plenty. Now bring it to her by the barn. She’s been waiting.'],'Farmer Hashim',()=>{S.currentTask=2;});
+    showDialogue(['Good, good — that’s plenty wheat. Now go feed her by the barn — press E when you\'re close.'],'Farmer Hashim',()=>{S.currentTask=2;updateTaskBar();});
   }
   else if(idx===2){
     showStoryPanel('2003','A Partnership Is Born','In Istog, a small town in western Kosovo, Devolli Group signs a historic agreement with Tetra Pak of Sweden.<br><br>For the first time, UHT technology — ultra-high temperature processing — will come to Kosovo.<br><br>But before the factory walls go up, before the machines arrive... the real foundation is being laid by farmers just like this one.',
       ()=>{
         S.villageLife=3; S.currentTask=3; S.taskProgress=0; S.taskTarget=TASK_TARGET[3];
-        showDialogue(['She\'s ready now. Walk up to her and press Enter to milk her — gently, mind you.'],'Farmer Hashim',()=>{cowReady=true;});
+        showDialogue(['She\'s ready now. Walk up to her and hold E to milk her — gently, mind you.'],'Farmer Hashim',()=>{cowReady=true;updateTaskBar();});
       });
   }
   else if(idx===3){
-    showDialogue(['There we go. Fresh, warm milk — nature’s gift. The neighbours are waiting for their morning delivery. Would you carry it down for me?'],'Farmer Hashim',()=>{S.currentTask=4;S.taskProgress=0;S.taskTarget=TASK_TARGET[4];});
+    showDialogue(['There we go. Fresh, warm milk — nature’s gift. Carry the bottles into the village and press E to sell them.'],'Farmer Hashim',()=>{S.currentTask=4;S.taskProgress=0;S.taskTarget=TASK_TARGET[4];updateTaskBar();});
   }
   else if(idx===4){
     S.villageLife=4;
     S.levelComplete=true;
+    updateTaskBar();
     startEnding();
   }
 }
@@ -1015,14 +1331,55 @@ function update() {
     const dx=Math.abs(p.px+PW/2-(farmerNPC.x*TILE+8)), dy=Math.abs(p.py+PH/2-(farmerNPC.y*TILE+8));
     if(dx<28 && dy<32){ farmerNPC.talked=true; completeTask(0); }
   }
-  // wheat
-  if(p.currentTask===1){for(const w of wheatItems){if(w.collected)continue;if(Math.abs(p.px+PW/2-w.x)<10&&Math.abs(p.py+PH/2-w.y)<22){w.collected=true;p.taskProgress++;spawnParticles(w.x,w.y,'rgba(255,215,0,1)',10);spawnFloatText(w.x,w.y-16,'+1 wheat');pickupSound();if(p.taskProgress>=TASK_TARGET[1])completeTask(1);}}}
-  // feed cow
-  if(p.currentTask===2){const cx=farmCow.x*TILE+TILE/2,cy=farmCow.y*TILE+TILE/2;if(Math.abs(p.px+PW/2-cx)<28&&Math.abs(p.py+PH/2-cy)<28&&!p.cowFed){p.cowFed=true;p.taskProgress++;spawnParticles(cx,cy,'rgba(100,200,100,1)',18);cowbellSound();showDialogue(['There you go, girl. Eat up. Fresh milk will come soon.'],'Farmer Hashim',()=>{completeTask(2);});}}
-  // milk
-  if(p.currentTask===3&&cowReady){const cx=farmCow.x*TILE+TILE/2,cy=farmCow.y*TILE+TILE/2;if(Math.abs(p.px+PW/2-cx)<28&&Math.abs(p.py+PH/2-cy)<28&&p.keys.Enter){p.keys.Enter=false;p.taskProgress++;spawnParticles(cx,cy+20,'rgba(255,255,255,1)',12);spawnFloatText(cx,cy-4,'+1 milk','#d8f0ff');milkSound();if(p.taskProgress>=TASK_TARGET[3]){cowReady=false;completeTask(3);}}}
-  // deliver
-  if(p.currentTask===4){for(const h of deliveryHouses){const hx=h.x*TILE+TILE,hy=h.y*TILE;if(Math.abs(p.px+PW/2-hx)<22&&Math.abs(p.py+PH/2-hy)<26&&p.keys.Enter){p.keys.Enter=false;p.taskProgress++;spawnParticles(hx,hy,'rgba(100,180,255,1)',14);chimeSound();showDialogue(['Faleminderit! The milk is fresh and delicious. Your farm is a blessing to this village.'],'Neighbour',()=>{});if(p.taskProgress>=TASK_TARGET[4])completeTask(4);}}}
+  // wheat — auto-picked up on touch, goes into inventory
+  if(p.currentTask===1){for(const w of wheatItems){if(w.collected)continue;if(Math.abs(p.px+PW/2-w.x)<10&&Math.abs(p.py+PH/2-w.y)<22){w.collected=true;p.taskProgress++;p.inventory.wheat++;spawnParticles(w.x,w.y,'rgba(255,215,0,1)',10);spawnFloatText(w.x,w.y-16,'+1 wheat');pickupSound();updateTaskBar();if(p.taskProgress>=TASK_TARGET[1])completeTask(1);}}}
+  // feed cow — press E, consumes the wheat you're carrying
+  if(p.currentTask===2){
+    const cx=farmCow.x*TILE+TILE/2, cy=farmCow.y*TILE+TILE/2;
+    const near = Math.abs(p.px+PW/2-cx)<28 && Math.abs(p.py+PH/2-cy)<28;
+    if(near && p.keys['e'] && !p.cowFed){
+      p.keys['e']=false; p.keys['E']=false;
+      if(p.inventory.wheat>0){
+        p.cowFed=true; p.taskProgress++; p.inventory.wheat=0;
+        spawnParticles(cx,cy,'rgba(100,200,100,1)',18); cowbellSound(); updateTaskBar();
+        showDialogue(['There you go, girl. Eat up. Fresh milk will come soon.'],'Farmer Hashim',()=>{completeTask(2);});
+      } else {
+        showDialogue(["I don't have any wheat to feed her yet — better go gather some."],'You',()=>{});
+      }
+    }
+  }
+  // milk — hold E next to the cow; a bottle drops into the inventory every so often
+  if(p.currentTask===3 && cowReady){
+    const cx=farmCow.x*TILE+TILE/2, cy=farmCow.y*TILE+TILE/2;
+    const near = Math.abs(p.px+PW/2-cx)<28 && Math.abs(p.py+PH/2-cy)<28;
+    if(near && p.keys['e']){
+      p.milkHold++;
+      if(p.milkHold>=35){
+        p.milkHold=0; p.taskProgress++; p.inventory.milk++;
+        spawnParticles(cx,cy+20,'rgba(255,255,255,1)',12); spawnFloatText(cx,cy-4,'+1 milk','#d8f0ff'); milkSound(); updateTaskBar();
+        if(p.taskProgress>=TASK_TARGET[3]){cowReady=false;completeTask(3);}
+      }
+    } else p.milkHold=0;
+  } else p.milkHold=0;
+  // sell — press E at a village house door, consumes a bottle from the inventory
+  // (h.y is the house's roofline, used for the decorative wave sprite — the door trigger sits at ground level instead)
+  if(p.currentTask===4){
+    for(const h of deliveryHouses){
+      const hx=h.x*TILE+TILE, hy=(MAP_H-6)*TILE;
+      const near = Math.abs(p.px+PW/2-hx)<22 && Math.abs(p.py+PH/2-hy)<26;
+      if(near && p.keys['e']){
+        p.keys['e']=false; p.keys['E']=false;
+        if(p.inventory.milk>0){
+          p.inventory.milk--; p.taskProgress++;
+          spawnParticles(hx,hy,'rgba(100,180,255,1)',14); chimeSound(); updateTaskBar();
+          showDialogue(['Faleminderit! The milk is fresh and delicious. Your farm is a blessing to this village.'],'Neighbour',()=>{});
+          if(p.taskProgress>=TASK_TARGET[4]) completeTask(4);
+        } else {
+          showDialogue(["You're out of milk to sell — go fetch more from the cow."],'You',()=>{});
+        }
+      }
+    }
+  }
 
   // petting non-task animals — pure delight, no progression
   if(p.petCooldown>0) p.petCooldown--;
@@ -1033,30 +1390,57 @@ function update() {
     });
     if(near){ p.petCooldown=30; p.keys.Enter=false; spawnParticles(near.x*TILE+8,near.y*TILE,'rgba(255,140,180,1)',8); petSound(); }
   }
+
+  // villager small-talk — press E near a villager to greet them
+  if(p.keys['e']){
+    const v = villagerPositions.find(v=>{
+      const vx=v.x*TILE+8, vy=v.y*TILE+8;
+      return Math.abs(p.px+PW/2-vx)<24 && Math.abs(p.py+PH/2-vy)<28;
+    });
+    if(v){ p.keys['e']=false; p.keys['E']=false; showDialogue(v.greet(), v.name, ()=>showChoices(v.choices(), v.name)); }
+  }
 }
 
 // ── INTERACT PROMPTS (Zelda-style bubble, replaces HUD) ──
-function drawPrompt(wx, wy) {
+function drawPrompt(wx, wy, label) {
+  label = label || 'ENTER';
   const bob = Math.sin(S.time*0.15)*2;
   const sx = wx-S.camX, sy = wy-S.camY+GH-MAP_H*TILE-26+bob;
-  ctx.fillStyle='rgba(18,58,111,0.85)'; ctx.fillRect(sx-11,sy-7,22,11);
+  const w = 10 + label.length*6;
+  ctx.fillStyle='rgba(18,58,111,0.85)'; ctx.fillRect(sx-w/2,sy-7,w,11);
   ctx.fillStyle='rgba(18,58,111,0.85)'; ctx.fillRect(sx-2,sy+3,4,4);
   ctx.fillStyle='#fff'; ctx.font='7px monospace'; ctx.textAlign='center';
-  ctx.fillText('ENTER', sx, sy);
+  ctx.fillText(label, sx, sy);
   ctx.textAlign='left';
+}
+function drawHoldBar(wx, wy, frac) {
+  const sx = wx-S.camX, sy = wy-S.camY+GH-MAP_H*TILE-34;
+  ctx.fillStyle='rgba(18,58,111,0.6)'; ctx.fillRect(sx-13,sy,26,5);
+  ctx.fillStyle='#d8f0ff'; ctx.fillRect(sx-11,sy+1,Math.max(0,22*frac),3);
 }
 function drawPrompts(){
   if(S.dialogue||S.intro||S.levelComplete) return;
   const p=S;
+  if(p.currentTask===2 && !p.cowFed){
+    const cx=farmCow.x*TILE+TILE/2, cy=farmCow.y*TILE+TILE/2;
+    if(Math.abs(p.px+PW/2-cx)<28&&Math.abs(p.py+PH/2-cy)<28) drawPrompt(cx,cy-10,'E');
+  }
   if(p.currentTask===3 && cowReady){
     const cx=farmCow.x*TILE+TILE/2, cy=farmCow.y*TILE+TILE/2;
-    if(Math.abs(p.px+PW/2-cx)<28&&Math.abs(p.py+PH/2-cy)<28) drawPrompt(cx,cy-10);
+    if(Math.abs(p.px+PW/2-cx)<28&&Math.abs(p.py+PH/2-cy)<28){
+      drawPrompt(cx,cy-10,'HOLD E');
+      if(p.milkHold>0) drawHoldBar(cx,cy,p.milkHold/35);
+    }
   }
   if(p.currentTask===4){
     for(const h of deliveryHouses){
-      const hx=h.x*TILE+TILE, hy=h.y*TILE;
-      if(Math.abs(p.px+PW/2-hx)<22&&Math.abs(p.py+PH/2-hy)<26) drawPrompt(hx,hy-10);
+      const hx=h.x*TILE+TILE, hy=(MAP_H-6)*TILE;
+      if(Math.abs(p.px+PW/2-hx)<22&&Math.abs(p.py+PH/2-hy)<26) drawPrompt(hx,hy-10,'E');
     }
+  }
+  for(const v of villagerPositions){
+    const vx=v.x*TILE+8, vy=v.y*TILE+8;
+    if(Math.abs(p.px+PW/2-vx)<24&&Math.abs(p.py+PH/2-vy)<28) drawPrompt(vx,vy-16,'E');
   }
 }
 
@@ -1144,11 +1528,14 @@ function initGame() {
   S.px=140; S.py=(MAP_H-4)*TILE-PH; S.vx=0; S.vy=0; S.facing=1; S.onGround=true;
   S.animFrame=0; S.animTimer=0; S.jumping=false;
   S.currentTask=0; S.taskProgress=0; S.taskTarget=0;
-  S.cowFed=false; cowReady=false;
+  S.cowFed=false; cowReady=false; S.milkHold=0;
+  S.inventory={wheat:0, milk:0};
+  S.choiceOptions=null; diaChoices.classList.remove('active');
   S.particles=[]; S.floatTexts=[]; S.smoke=[]; S.leaves=[]; S.dust=[];
   S.camX=0; S.camY=0;
   S.dialogue=false; S.levelComplete=false; S.keys={}; S.time=0; S.villageLife=0; S.petCooldown=0;
   buildWorld();
+  updateTaskBar();
 }
 
 function startGame() {
@@ -1162,14 +1549,24 @@ function startGame() {
 
 // ── KEY HANDLING ──
 window.addEventListener('keydown',e=>{
-  S.keys[e.key]=true;
+  S.keys[e.key]=true; S.keys[e.key.toLowerCase()]=true;
+  tryFullscreen();
   if(S.intro){ advanceHistory(); return; }
+  if(S.choiceOptions){
+    if(e.key==='ArrowUp'){e.preventDefault(); moveChoice(-1); return;}
+    if(e.key==='ArrowDown'){e.preventDefault(); moveChoice(1); return;}
+    if(e.key==='Enter'){e.preventDefault(); confirmChoice(); return;}
+    const n = parseInt(e.key,10);
+    if(!isNaN(n) && n>=1 && n<=S.choiceOptions.length){ confirmChoice(n-1); return; }
+    return;
+  }
   if(e.key==='Enter'){e.preventDefault();if(S.dialogue)advanceDialogue();}
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
 });
-window.addEventListener('keyup',e=>{S.keys[e.key]=false;if(e.key===' ')S.jumping=false;});
+window.addEventListener('keyup',e=>{S.keys[e.key]=false; S.keys[e.key.toLowerCase()]=false; if(e.key===' ')S.jumping=false;});
 
 window.addEventListener('click',()=>{
+  tryFullscreen();
   if(S.intro) advanceHistory();
 });
 
