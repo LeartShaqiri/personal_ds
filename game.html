@@ -24,12 +24,48 @@
 
   canvas { display:block; image-rendering:pixelated; image-rendering:crisp-edges; }
 
-  /* UI overlays - positioned relative to container */
   .overlay {
     position:absolute; inset:0; display:flex; flex-direction:column;
     align-items:center; justify-content:center; pointer-events:none; z-index:10;
   }
 
+  /* ── History screen: sun + hills backdrop with narrated founding story ── */
+  .history-screen {
+    position:absolute; inset:0; z-index:25; display:flex; flex-direction:column;
+    align-items:center; justify-content:flex-end; text-align:center; cursor:pointer;
+    padding-bottom:clamp(36px,9vh,88px);
+    background:linear-gradient(to top, rgba(4,10,20,0.75) 0%, rgba(4,10,20,0.25) 45%, transparent 75%);
+    transition:opacity 0.5s var(--ease);
+  }
+  .history-screen.hidden { opacity:0; pointer-events:none; }
+  .history-card {
+    opacity:0; transform:translateY(6px); transition:opacity 0.4s var(--ease), transform 0.4s var(--ease);
+    max-width:560px; padding:0 24px;
+  }
+  .history-card.in { opacity:1; transform:translateY(0); }
+  .history-year {
+    font-family:var(--font-display); font-size:clamp(26px,3.6vw,40px); font-weight:800;
+    letter-spacing:0.03em; color:#ffd97a; text-shadow:0 2px 16px rgba(0,0,0,0.5);
+  }
+  .history-text {
+    font-family:var(--font-body); font-size:clamp(12px,1.4vw,15px); font-weight:400;
+    color:#fff; line-height:1.7; margin-top:8px; text-shadow:0 2px 10px rgba(0,0,0,0.55);
+  }
+  .history-next {
+    font-family:var(--font-body); font-size:clamp(8px,0.9vw,10px); font-weight:600;
+    letter-spacing:0.18em; text-transform:uppercase; color:rgba(255,255,255,0.65);
+    margin-top:22px; animation:blink 1.3s ease-in-out infinite;
+  }
+
+  /* ── 2003 flash: quick pixel-title fade straight into gameplay ── */
+  .year-flash {
+    position:absolute; inset:0; z-index:40; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:800; font-size:clamp(64px,13vw,140px); color:#fff;
+    background:#000; opacity:0; pointer-events:none; transition:opacity 0.5s ease;
+  }
+  .year-flash.show { opacity:1; }
+
+  /* ── Story interludes (historical facts) + ending recap ── */
   .cinematic {
     position:absolute; inset:0; display:flex; flex-direction:column;
     align-items:center; justify-content:center;
@@ -76,6 +112,20 @@
     letter-spacing:0.15em; text-transform:uppercase; color:var(--text-dim);
   }
 
+  /* ── End-of-level fade to black + title card ── */
+  .end-fade {
+    position:absolute; inset:0; z-index:18; background:#000; opacity:0;
+    transition:opacity 1.8s var(--ease); pointer-events:none;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .end-fade.on { opacity:1; }
+  .end-fade-text {
+    font-family:var(--font-display); font-size:clamp(20px,3vw,34px); font-weight:600;
+    letter-spacing:0.08em; color:#fff; opacity:0; transition:opacity 1.6s var(--ease) 0.6s;
+    text-align:center;
+  }
+  .end-fade.on .end-fade-text { opacity:1; }
+
   .dialogue {
     position:absolute; bottom:clamp(12px,2.5vh,24px); left:50%;
     transform:translateX(-50%);
@@ -86,6 +136,10 @@
     box-shadow:0 8px 32px rgba(0,87,184,0.08);
   }
   .dialogue.active { display:block; }
+  .dialogue-name {
+    font-family:var(--font-display); font-size:clamp(9px,0.85vw,11px); font-weight:700;
+    letter-spacing:0.14em; text-transform:uppercase; color:var(--blue); margin-bottom:4px;
+  }
   .dialogue-text {
     font-family:var(--font-body); font-size:clamp(11px,1.2vw,14px); font-weight:500;
     color:var(--text); line-height:1.8; margin-bottom:8px;
@@ -97,22 +151,6 @@
     animation:blink 1.2s ease-in-out infinite;
   }
   @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-
-  .hud {
-    position:absolute; top:clamp(8px,1.5vh,16px); left:clamp(10px,2vw,20px);
-    z-index:10; pointer-events:none; display:none;
-  }
-  .hud.active { display:block; }
-  .hud-objective {
-    font-family:var(--font-body); font-size:clamp(9px,0.9vw,11px); font-weight:600;
-    letter-spacing:0.05em; color:var(--white); background:var(--blue);
-    padding:7px 16px; border-radius:100px;
-  }
-  .hud-progress {
-    font-family:var(--font-body); font-size:clamp(8px,0.8vw,10px); font-weight:500;
-    color:var(--text-dim); margin-top:4px; padding:3px 10px;
-    background:rgba(255,255,255,0.85); border-radius:8px; display:inline-block;
-  }
 </style>
 </head>
 <body>
@@ -120,41 +158,30 @@
 <div id="container">
   <canvas id="game"></canvas>
 
-  <div class="cinematic" id="cinematic">
-    <div class="cin-logo">QUMËSHTORJA VITA</div>
-    <div class="cin-year">2003</div>
-    <div class="cin-title">The Beginning</div>
-    <div class="cin-divider"></div>
-    <div class="cin-story">
-      Kosovo, still healing from war, is about to witness<br>
-      something remarkable. In the small town of Istog,<br>
-      Devolli Group partners with Tetra Pak — bringing<br>
-      UHT technology to Kosovo for the first time.<br><br>
-      Before the factory. Before the trucks. Before the<br>
-      blue cartons on every table... there were farmers.<br>
-      Simple men and women who woke before dawn to<br>
-      tend their cows and deliver fresh milk to their<br>
-      neighbours door to door.<br><br>
-      This is where the story of VITA begins.
+  <div class="history-screen" id="historyScreen">
+    <div class="history-card" id="historyCard">
+      <div class="history-year" id="historyYear"></div>
+      <div class="history-text" id="historyText"></div>
+      <div class="history-next">Press Enter or Click to Continue</div>
     </div>
-    <button class="cin-btn" onclick="startGame()">Begin</button>
-    <div class="cin-sub">Press Enter or click</div>
   </div>
+
+  <div class="year-flash" id="yearFlash">2003</div>
+
+  <div class="cinematic hidden" id="cinematic"></div>
+
+  <div class="end-fade" id="endFade"><div class="end-fade-text" id="endFadeText">The Journey Begins&hellip;</div></div>
 
   <div class="dialogue" id="dialogue">
+    <div class="dialogue-name" id="dialogueName"></div>
     <div class="dialogue-text" id="dialogueText"></div>
-    <div class="dialogue-continue">▼ Press Enter</div>
-  </div>
-
-  <div class="hud" id="hud">
-    <div class="hud-objective" id="hudObj"></div>
-    <div class="hud-progress" id="hudProgress"></div>
+    <div class="dialogue-continue">&#9660; Press Enter</div>
   </div>
 </div>
 
 <script>
 // ═══════════════════════════════════════════
-// VITA — LEVEL 1: THE BEGINNING
+// VITA — LEVEL 1: THE FIRST DROP
 // Nintendo-quality pixel-art story game
 // ═══════════════════════════════════════════
 
@@ -182,58 +209,150 @@ resize();
 window.addEventListener('resize', resize);
 
 const $ = s => document.querySelector(s);
-const diaBox = $('#dialogue'), diaText = $('#dialogueText');
-const cinematic = $('#cinematic'), hudEl = $('#hud');
-const hudObj = $('#hudObj'), hudProgress = $('#hudProgress');
+const diaBox = $('#dialogue'), diaText = $('#dialogueText'), diaName = $('#dialogueName');
+const cinematic = $('#cinematic');
+const historyScreen = $('#historyScreen'), historyCard = $('#historyCard'), historyYear = $('#historyYear'), historyText = $('#historyText');
+const yearFlash = $('#yearFlash');
+const endFade = $('#endFade'), endFadeText = $('#endFadeText');
+
+// ── AMBIENT AUDIO (procedural — no external assets) ──
+let actx=null, masterGain=null, audioReady=false;
+function initAudio(){
+  if(audioReady) return; audioReady=true;
+  try{
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+    masterGain = actx.createGain(); masterGain.gain.value=0.55; masterGain.connect(actx.destination);
+    startWind(); scheduleBirds(); startAmbientMusic();
+  }catch(e){}
+}
+function unlockAudio(){ if(actx && actx.state==='suspended') actx.resume(); }
+function startWind(){
+  const bufSize = actx.sampleRate*2;
+  const buf = actx.createBuffer(1,bufSize,actx.sampleRate);
+  const data = buf.getChannelData(0);
+  for(let i=0;i<bufSize;i++) data[i]=(Math.random()*2-1);
+  const src = actx.createBufferSource(); src.buffer=buf; src.loop=true;
+  const filter = actx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=340;
+  const g = actx.createGain(); g.gain.value=0.045;
+  src.connect(filter); filter.connect(g); g.connect(masterGain); src.start();
+}
+function chirp(){
+  if(!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type='sine'; const base=1700+Math.random()*900;
+  o.frequency.setValueAtTime(base, actx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(base*0.6, actx.currentTime+0.12);
+  g.gain.setValueAtTime(0.0001, actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.05, actx.currentTime+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+0.15);
+  o.connect(g); g.connect(masterGain); o.start(); o.stop(actx.currentTime+0.16);
+}
+function scheduleBirds(){
+  setInterval(()=>{ if(!actx)return; if(Math.random()<0.55) chirp(); if(Math.random()<0.25) setTimeout(chirp,140); },1700);
+}
+function footstepSound(){
+  if(!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type='square'; o.frequency.value=85+Math.random()*18;
+  g.gain.setValueAtTime(0.045, actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+0.07);
+  o.connect(g); g.connect(masterGain); o.start(); o.stop(actx.currentTime+0.08);
+}
+function cowbellSound(){
+  if(!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type='triangle'; o.frequency.value=520;
+  g.gain.setValueAtTime(0.07, actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+0.4);
+  o.connect(g); g.connect(masterGain); o.start(); o.stop(actx.currentTime+0.4);
+}
+function chimeSound(){
+  if(!actx) return;
+  [660,880,990].forEach((f,i)=>{
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type='sine'; o.frequency.value=f;
+    const t=actx.currentTime+i*0.08;
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.06,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.5);
+    o.connect(g); g.connect(masterGain); o.start(t); o.stop(t+0.5);
+  });
+}
+function milkSound(){
+  if(!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type='sine'; o.frequency.setValueAtTime(300,actx.currentTime); o.frequency.exponentialRampToValueAtTime(170,actx.currentTime+0.15);
+  g.gain.setValueAtTime(0.06,actx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+0.18);
+  o.connect(g); g.connect(masterGain); o.start(); o.stop(actx.currentTime+0.2);
+}
+function pickupSound(){
+  if(!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type='sine'; o.frequency.setValueAtTime(520,actx.currentTime); o.frequency.exponentialRampToValueAtTime(880,actx.currentTime+0.1);
+  g.gain.setValueAtTime(0.05,actx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+0.13);
+  o.connect(g); g.connect(masterGain); o.start(); o.stop(actx.currentTime+0.14);
+}
+function petSound(){
+  if(!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type='sine'; o.frequency.setValueAtTime(700,actx.currentTime); o.frequency.exponentialRampToValueAtTime(950,actx.currentTime+0.08);
+  g.gain.setValueAtTime(0.045,actx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+0.12);
+  o.connect(g); g.connect(masterGain); o.start(); o.stop(actx.currentTime+0.13);
+}
+function startAmbientMusic(){
+  const notes=[261.6,293.7,329.6,392.0,440.0,523.3];
+  function playNote(){
+    if(!actx) return;
+    const f = notes[Math.floor(Math.random()*notes.length)];
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type='sine'; o.frequency.value=f;
+    const t=actx.currentTime;
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.032,t+0.5); g.gain.exponentialRampToValueAtTime(0.0001,t+3.6);
+    o.connect(g); g.connect(masterGain); o.start(t); o.stop(t+3.7);
+    setTimeout(playNote, 1900+Math.random()*2300);
+  }
+  playNote();
+}
+window.addEventListener('keydown', unlockAudio, {once:true});
+window.addEventListener('click', unlockAudio, {once:true});
 
 // ── GAME STATE ──
 const S = {
   intro:true, playing:false, dialogue:false,
-  dialogueQueue:[], diaCb:null,
-  px:48, py:0, vx:0, vy:0, facing:1, onGround:false, jumping:false,
+  dialogueQueue:[], diaCb:null, diaSpeaker:'',
+  px:140, py:0, vx:0, vy:0, facing:1, onGround:false, jumping:false,
   animFrame:0, animTimer:0,
   currentTask:0, taskProgress:0, taskTarget:0,
-  wheatCollected:0, cowFed:false, cowReady:false, cowTimer:0,
-  milkCollected:0, deliveries:0,
-  camX:0, camY:0, particles:[], keys:{}, levelComplete:false,
-  time:0,
+  cowFed:false, metFarmer:false,
+  camX:0, camY:0, particles:[], floatTexts:[], smoke:[], leaves:[], dust:[], keys:{}, levelComplete:false,
+  time:0, villageLife:0, petCooldown:0,
 };
 
 // ── WORLD ──
 const MAP_W = 100, MAP_H = 28;
 let map = [];
-let wheatItems = [], cowPositions = [], chickenPositions = [], sheepPositions = [];
-let deliveryHouses = [], farmCow = null;
-let worldObjects = []; // trees, bushes, rocks, flowers
+let wheatItems = [], cowPositions = [], chickenPositions = [], sheepPositions = [], butterflies = [];
+let deliveryHouses = [], farmCow = null, farmerNPC = null;
+let worldObjects = [];
 
 function buildWorld() {
   map = Array.from({length:MAP_H}, () => Array(MAP_W).fill('.'));
-  // Ground layers
   for (let y=0; y<MAP_H; y++)
     for (let x=0; x<MAP_W; x++) {
-      if (y >= MAP_H-4) map[y][x] = 'G';  // grass
-      if (y >= MAP_H-2) map[y][x] = 'D';  // dirt
+      if (y >= MAP_H-4) map[y][x] = 'G';
+      if (y >= MAP_H-2) map[y][x] = 'D';
     }
-  // Dirt road from centre-right
-  for (let x=25; x<MAP_W; x++) {
-    map[MAP_H-4][x] = 'R'; map[MAP_H-3][x] = 'R';
-  }
+  for (let x=25; x<MAP_W; x++) { map[MAP_H-4][x] = 'R'; map[MAP_H-3][x] = 'R'; }
   map[MAP_H-4][25] = 'G'; map[MAP_H-4][95] = 'G';
 
-  // Fence line left of farm
-  for (let x=0; x<18; x+=3) map[MAP_H-4][x] = 'F';
+  for (let x=0; x<18; x+=2) map[MAP_H-4][x] = 'F';
 
-  // Barn at x:3-8
   for (let bx=3; bx<=9; bx++)
     for (let by=MAP_H-9; by<=MAP_H-5; by++)
       map[by][bx] = 'B';
 
-  // Wheat field
   for (let wx=14; wx<=19; wx++)
     for (let wy=MAP_H-6; wy<=MAP_H-5; wy++)
       map[wy][wx] = 'W';
 
-  // Village houses on right
   for (let hx=70; hx<=74; hx++)
     for (let hy=MAP_H-10; hy<=MAP_H-5; hy++)
       map[hy][hx] = 'H';
@@ -241,70 +360,71 @@ function buildWorld() {
     for (let hy=MAP_H-9; hy<=MAP_H-5; hy++)
       map[hy][hx] = 'H';
 
-  // Trees scattered around
   worldObjects = [];
-  const treePos = [[10,14],[11,15],[22,17],[24,12],[28,18],[30,15],[32,14],[35,17],[38,16],[40,14],
-    [48,16],[50,15],[55,18],[58,14],[60,17],[62,13],[64,16],[68,15],[76,14],[78,17],[80,13],[88,15],[92,16]];
-  for (const [tx,ty] of treePos) {
+  const treePos = [10,11,22,24,28,30,32,35,38,40,
+    48,50,55,58,60,62,64,68,76,78,80,88,92];
+  for (const tx of treePos) {
     const t = tx % 5 === 0 ? 'pine' : tx % 3 === 0 ? 'apple' : 'oak';
-    worldObjects.push({type:'tree', variant:t, x:tx*TILE + TILE/2, y:(MAP_H-4-ty)*TILE});
+    worldObjects.push({type:'tree', variant:t, x:tx*TILE + TILE/2, seed:Math.random()*Math.PI*2});
   }
 
-  // Bushes
-  for (let i=0; i<18; i++) {
+  for (let i=0; i<22; i++) {
     const bx = 5 + Math.floor(Math.random()*90);
-    worldObjects.push({type:'bush', x:bx*TILE + 4 + Math.random()*8, y:(MAP_H-4)*TILE - 2});
+    worldObjects.push({type:'bush', x:bx*TILE + 4 + Math.random()*8});
   }
-
-  // Rocks
-  for (let i=0; i<12; i++) {
+  for (let i=0; i<14; i++) {
     const rx = 3 + Math.floor(Math.random()*94);
-    worldObjects.push({type:'rock', x:rx*TILE + 2 + Math.random()*12, y:(MAP_H-4)*TILE - 1});
+    worldObjects.push({type:'rock', x:rx*TILE + 2 + Math.random()*12});
   }
-
-  // Flowers
-  for (let i=0; i<40; i++) {
+  for (let i=0; i<50; i++) {
     const fx = 1 + Math.floor(Math.random()*98);
-    worldObjects.push({type:'flower', x:fx*TILE + Math.random()*14, y:(MAP_H-4)*TILE - 1});
+    worldObjects.push({type:'flower', x:fx*TILE + Math.random()*14, hue:Math.floor(Math.random()*3)});
   }
 
-  // Wheat collectibles
+  // ── Farmstead set-pieces — a complete homestead, not just sprites on grass ──
+  worldObjects.push({type:'windmill', x:1*TILE+10});
+  worldObjects.push({type:'hay', x:9*TILE+15});
+  worldObjects.push({type:'hay', x:9*TILE+27});
+  worldObjects.push({type:'trough', x:8*TILE+4});
+  worldObjects.push({type:'well', x:13*TILE+2});
+  worldObjects.push({type:'sign', x:20*TILE+10, label:'FARM'});
+  worldObjects.push({type:'cabbage', x:21*TILE+8});
+  worldObjects.push({type:'cabbage', x:22*TILE+4});
+  worldObjects.push({type:'carrotpatch', x:22*TILE+14});
+  worldObjects.push({type:'carrotpatch', x:23*TILE+6});
+  worldObjects.push({type:'shed', x:60*TILE+8});
+  worldObjects.push({type:'hay', x:61*TILE+26});
+  worldObjects.push({type:'sign', x:69*TILE+10, label:'VILLAGE'});
+
   wheatItems = [];
   for (let wx=14; wx<=19; wx++)
     wheatItems.push({x:wx*TILE + TILE/2, y:(MAP_H-3)*TILE - 6, collected:false});
 
-  // Cows (grazing in field)
   cowPositions = [
     {x:20, y:MAP_H-7, dir:1, anim:0}, {x:33, y:MAP_H-7, dir:-1, anim:20},
     {x:52, y:MAP_H-7, dir:1, anim:40}, {x:63, y:MAP_H-7, dir:-1, anim:10},
   ];
+  farmCow = {x:6, y:MAP_H-6, dir:1, anim:0};
+  farmerNPC = {x:11, y:MAP_H-6, dir:-1, anim:0, talked:false};
 
-  // The farm cow (near barn)
-  farmCow = {x:6, y:MAP_H-9, dir:1, anim:0};
-
-  // Chickens near barn
   chickenPositions = [];
   for (let i=0; i<5; i++)
     chickenPositions.push({x:8 + Math.random()*5, y:MAP_H-5, dir:Math.random()>0.5?1:-1, anim:Math.random()*60, peck:0});
 
-  // Sheep in field
   sheepPositions = [];
   for (let i=0; i<4; i++)
     sheepPositions.push({x:40 + Math.random()*20, y:MAP_H-5, dir:Math.random()>0.5?1:-1, anim:Math.random()*80});
 
-  // Delivery targets
+  butterflies = [];
+  for (let i=0; i<9; i++)
+    butterflies.push({x:5 + Math.random()*90, baseY:MAP_H-6, phase:Math.random()*Math.PI*2, speed:0.4+Math.random()*0.5, wing:0});
+
   deliveryHouses = [{x:72, y:MAP_H-11}, {x:84, y:MAP_H-10}];
 }
 buildWorld();
 
-// ── TASKS ──
-const TASKS = [
-  {id:'welcome', obj:'Explore the farm', target:0, desc:'← → to walk, ↑ to jump'},
-  {id:'wheat', obj:'Collect wheat from the field', target:6, desc:'Walk to the golden wheat'},
-  {id:'feed', obj:'Feed the cow', target:1, desc:'Bring wheat to the cow at the barn'},
-  {id:'milk', obj:'Milk the cow', target:3, desc:'Wait for the cow, then milk her (Enter)'},
-  {id:'deliver', obj:'Deliver milk to the village', target:3, desc:'Take milk to houses on the right (Enter)'},
-];
+// ── TASKS (targets only — no HUD, discovered through dialogue) ──
+const TASK_TARGET = {1:6, 3:3, 4:2};
 
 // ── PLAYER ──
 const PW=14, PH=18, GRAVITY=0.4, SPEED=1.4, JUMP=-4.4;
@@ -316,52 +436,52 @@ function drawPlayer(px, py) {
   const armOff = walk===2?1:walk===0?-1:0;
   const bx = px, by = py;
 
-  // Shadow
   ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(bx-2, by+PH-1, PW+4, 3);
-
-  // Boots - dark brown
   ctx.fillStyle='#3a2510'; ctx.fillRect(bx+3, by+PH-4+legOff, 4, 4); ctx.fillRect(bx+8, by+PH-4-legOff, 4, 4);
-  // Legs - denim blue
   ctx.fillStyle='#2a5090'; ctx.fillRect(bx+3, by+PH-8+legOff, 4, 5); ctx.fillRect(bx+8, by+PH-8-legOff, 4, 5);
-  // Body / overalls - VITA blue
   ctx.fillStyle='#0057B8'; ctx.fillRect(bx+2, by+4, 10, 10);
   ctx.fillStyle='#0068d0'; ctx.fillRect(bx+3, by+7, 8, 2);
-  // Belt
   ctx.fillStyle='#3a2510'; ctx.fillRect(bx+2, by+10, 10, 1);
-  // Shirt - white
   ctx.fillStyle='#f5f2e8'; ctx.fillRect(bx+2, by+1, 10, 4);
-  // Arms
   ctx.fillStyle='#d4a574'; ctx.fillRect(bx, by+4+armOff, 2, 5); ctx.fillRect(bx+PW-2, by+4-armOff, 2, 5);
-  // Hands
   ctx.fillStyle='#d4a574'; ctx.fillRect(bx-1, by+8+armOff, 3, 2); ctx.fillRect(bx+PW-2, by+8-armOff, 3, 2);
-  // Head
   ctx.fillStyle='#d4a574'; ctx.fillRect(bx+3, by-PH+14, 8, 8);
-  // Hair
   ctx.fillStyle='#3a2510'; ctx.fillRect(bx+3, by-PH+14, 8, 3); ctx.fillRect(bx+2, by-PH+15, 10, 2);
-  // Face
   const ex = f===1?bx+8:bx+4;
   ctx.fillStyle='#1a0a00'; ctx.fillRect(ex, by-PH+18, 2, 2);
-  // Hat
   ctx.fillStyle='#8B6914'; ctx.fillRect(bx+1, by-PH+11, 12, 3); ctx.fillRect(bx+3, by-PH+13, 8, 2);
+}
+
+// ── FARMER NPC (idle, warm — the human heart of the story) ──
+function drawFarmer(sx, sy, dir, anim) {
+  const bob = Math.sin(anim*0.05)*1;
+  const bx = sx, by = sy + bob;
+  ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(bx-2, by+PH-1, PW+4, 3);
+  ctx.fillStyle='#4a3520'; ctx.fillRect(bx+3, by+PH-4, 4, 4); ctx.fillRect(bx+8, by+PH-4, 4, 4);
+  ctx.fillStyle='#5a4a30'; ctx.fillRect(bx+3, by+PH-8, 4, 5); ctx.fillRect(bx+8, by+PH-8, 4, 5);
+  ctx.fillStyle='#6b4a2e'; ctx.fillRect(bx+2, by+4, 10, 10);
+  ctx.fillStyle='#7c5a3a'; ctx.fillRect(bx+3, by+7, 8, 2);
+  ctx.fillStyle='#e8ddc8'; ctx.fillRect(bx+2, by+1, 10, 4);
+  ctx.fillStyle='#c9b896'; ctx.fillRect(bx, by+4, 2, 5); ctx.fillRect(bx+PW-2, by+4, 2, 5);
+  ctx.fillStyle='#c9b896'; ctx.fillRect(bx-1, by+8, 3, 2); ctx.fillRect(bx+PW-2, by+8, 3, 2);
+  ctx.fillStyle='#c9a876'; ctx.fillRect(bx+3, by-PH+14, 8, 8);
+  ctx.fillStyle='#d8d0c0'; ctx.fillRect(bx+3, by-PH+14, 8, 2);
+  const ex = dir===1?bx+8:bx+4;
+  ctx.fillStyle='#1a0a00'; ctx.fillRect(ex, by-PH+18, 2, 2);
+  ctx.fillStyle='#c9a860'; ctx.fillRect(bx, by-PH+11, 14, 2); ctx.fillRect(bx+2, by-PH+9, 10, 3);
 }
 
 // ── ANIMALS ──
 function drawCow(cx, cy, dir, a) {
   const legAnim = Math.floor(a/15)%2;
-  // Body
   ctx.fillStyle='#f5f5f0'; ctx.fillRect(cx+4, cy+8, 22, 14);
-  // Black spots
   ctx.fillStyle='#2a2a2a'; ctx.fillRect(cx+9, cy+10, 5, 4); ctx.fillRect(cx+18, cy+12, 5, 3);
-  // Udder
   ctx.fillStyle='#f0c0c0'; ctx.fillRect(cx+9, cy+20, 12, 4);
-  // Legs with animation
   ctx.fillStyle='#e8e8e0';
   ctx.fillRect(cx+6, cy+22+(legAnim?2:0), 4, 6); ctx.fillRect(cx+20, cy+22+(legAnim?-2:0), 4, 6);
   ctx.fillRect(cx+12, cy+22+(legAnim?-1:0), 4, 6); ctx.fillRect(cx+16, cy+22+(legAnim?1:0), 4, 6);
-  // Hooves
   ctx.fillStyle='#4a4a4a'; ctx.fillRect(cx+6, cy+27, 4, 2); ctx.fillRect(cx+12, cy+27, 4, 2);
   ctx.fillRect(cx+16, cy+27, 4, 2); ctx.fillRect(cx+20, cy+27, 4, 2);
-  // Head
   if (dir>0) { ctx.fillStyle='#f5f5f0'; ctx.fillRect(cx+24, cy+6, 10, 10); ctx.fillStyle='#f0c0c0'; ctx.fillRect(cx+28, cy+14, 6, 3);
               ctx.fillStyle='#1a0a00'; ctx.fillRect(cx+28, cy+8, 2, 2); ctx.fillStyle='#e0e0d8'; ctx.fillRect(cx+24, cy+5, 4, 3); }
   else       { ctx.fillStyle='#f5f5f0'; ctx.fillRect(cx-2, cy+6, 10, 10); ctx.fillStyle='#f0c0c0'; ctx.fillRect(cx-2, cy+14, 6, 3);
@@ -370,57 +490,170 @@ function drawCow(cx, cy, dir, a) {
 
 function drawChicken(cx, cy, dir, a, peck) {
   const bodyY = peck>0 ? cy+4 : cy+2;
-  // Body
   ctx.fillStyle='#f5e6d0'; ctx.fillRect(cx+2, bodyY+2, 8, 8);
-  // Wing
   ctx.fillStyle='#e8c898'; ctx.fillRect(cx+1, bodyY+3, 6, 5);
-  // Comb
   ctx.fillStyle='#d04030'; ctx.fillRect(cx+3, cy, 4, 3);
-  // Beak
   ctx.fillStyle='#e89830'; const bx = dir>0 ? cx+8 : cx-1; ctx.fillRect(bx, cy+3, 3, 2);
-  // Legs
   ctx.fillStyle='#e89830'; ctx.fillRect(cx+3, cy+10, 1, 4); ctx.fillRect(cx+7, cy+10, 1, 4);
 }
 
 function drawSheep(cx, cy, a) {
   const legAnim = Math.floor(a/20)%2;
-  // Body (fluffy white)
   ctx.fillStyle='#f8f8f4'; ctx.fillRect(cx+2, cy+4, 14, 10);
   ctx.fillStyle='#ffffff'; ctx.fillRect(cx+4, cy+6, 10, 6);
-  // Legs
   ctx.fillStyle='#4a3a2a'; ctx.fillRect(cx+4, cy+14+(legAnim?1:0), 2, 5); ctx.fillRect(cx+10, cy+14+(legAnim?-1:0), 2, 5);
   ctx.fillRect(cx+14, cy+14+(legAnim?0:0), 2, 5);
-  // Head
   ctx.fillStyle='#e8e0d8'; ctx.fillRect(cx, cy+6, 6, 6);
   ctx.fillStyle='#1a0a00'; ctx.fillRect(cx+3, cy+7, 1, 1);
 }
 
+function drawButterfly(bx, by, wing, hue) {
+  const flap = Math.sin(wing)*3;
+  ctx.fillStyle=hue; ctx.fillRect(bx-3, by-2+flap*0.3, 3, 3); ctx.fillRect(bx+1, by-2-flap*0.3, 3, 3);
+  ctx.fillStyle='#333'; ctx.fillRect(bx-1, by-2, 1, 4);
+}
+
 // ── ENVIRONMENT DRAWING ──
-function drawTree(sx, sy, v) {
-  // Trunk
+function groundShadow(sx, gy, w) {
+  ctx.fillStyle='rgba(20,25,10,0.20)';
+  ctx.fillRect(sx-w/2, gy-3, w, 4);
+}
+
+function drawTree(sx, sy, v, sway) {
+  sway = sway||0;
   ctx.fillStyle='#6B4226'; ctx.fillRect(sx-2, sy+8, 4, 16);
   ctx.fillStyle='#8B5A2E'; ctx.fillRect(sx-1, sy+10, 2, 12);
+  const cx = sx+sway;
   if (v==='pine') {
-    // Pine - triangular layers
-    ctx.fillStyle='#2d5a1e'; ctx.fillRect(sx-10, sy-4, 20, 12);
-    ctx.fillStyle='#3a7028'; ctx.fillRect(sx-8, sy-10, 16, 10);
-    ctx.fillStyle='#4a8535'; ctx.fillRect(sx-5, sy-14, 10, 8);
+    ctx.fillStyle='#2d5a1e'; ctx.fillRect(cx-10, sy-4, 20, 12);
+    ctx.fillStyle='#3a7028'; ctx.fillRect(cx-8, sy-10, 16, 10);
+    ctx.fillStyle='#4a8535'; ctx.fillRect(cx-5, sy-14, 10, 8);
   } else if (v==='apple') {
-    // Round canopy with apples
-    ctx.fillStyle='#4a7a30'; ctx.fillRect(sx-8, sy-6, 16, 16);
-    ctx.fillStyle='#5a9038'; ctx.fillRect(sx-6, sy-8, 12, 14);
-    ctx.fillStyle='#d03030'; ctx.fillRect(sx-3, sy-2, 2, 2); ctx.fillRect(sx+4, sy, 2, 2); ctx.fillRect(sx, sy-5, 2, 2);
-    ctx.fillStyle='#e84040'; ctx.fillRect(sx-2, sy-1, 1, 1); ctx.fillRect(sx+5, sy+1, 1, 1);
+    ctx.fillStyle='#4a7a30'; ctx.fillRect(cx-8, sy-6, 16, 16);
+    ctx.fillStyle='#5a9038'; ctx.fillRect(cx-6, sy-8, 12, 14);
+    ctx.fillStyle='#d03030'; ctx.fillRect(cx-3, sy-2, 2, 2); ctx.fillRect(cx+4, sy, 2, 2); ctx.fillRect(cx, sy-5, 2, 2);
+    ctx.fillStyle='#e84040'; ctx.fillRect(cx-2, sy-1, 1, 1); ctx.fillRect(cx+5, sy+1, 1, 1);
   } else {
-    // Oak - large round
-    ctx.fillStyle='#3a6a20'; ctx.fillRect(sx-9, sy-2, 18, 18);
-    ctx.fillStyle='#4a8030'; ctx.fillRect(sx-7, sy-4, 14, 16);
-    ctx.fillStyle='#5a903a'; ctx.fillRect(sx-4, sy-6, 8, 12);
+    ctx.fillStyle='#3a6a20'; ctx.fillRect(cx-9, sy-2, 18, 18);
+    ctx.fillStyle='#4a8030'; ctx.fillRect(cx-7, sy-4, 14, 16);
+    ctx.fillStyle='#5a903a'; ctx.fillRect(cx-4, sy-6, 8, 12);
+  }
+}
+
+function drawWindmill(sx, gy, time) {
+  const h=52;
+  groundShadow(sx, gy, 24);
+  ctx.fillStyle='#8a7454'; ctx.fillRect(sx-10, gy-14, 20, 14);
+  ctx.fillStyle='#c9b896'; ctx.fillRect(sx-9, gy-h, 18, h-14);
+  ctx.fillStyle='#b8a582'; ctx.fillRect(sx-9, gy-h, 4, h-14);
+  ctx.fillStyle='#5a4a34'; ctx.fillRect(sx-3, gy-11, 6, 11);
+  ctx.fillStyle='#7a4a30'; ctx.fillRect(sx-11, gy-h-7, 22, 9);
+  ctx.fillStyle='#5a3320'; ctx.fillRect(sx-6, gy-h-13, 12, 8);
+  ctx.save();
+  ctx.translate(sx, gy-h+3);
+  ctx.rotate(time*0.025);
+  for (let i=0; i<4; i++) {
+    ctx.save(); ctx.rotate(i*Math.PI/2);
+    ctx.fillStyle='#e8ddc8'; ctx.fillRect(-3, -26, 6, 25);
+    ctx.fillStyle='#d0c4a8'; ctx.fillRect(-2, -24, 4, 21);
+    ctx.restore();
+  }
+  ctx.fillStyle='#6b5a3a'; ctx.fillRect(-2,-2,4,4);
+  ctx.restore();
+}
+
+function drawWell(sx, gy) {
+  groundShadow(sx, gy, 26);
+  ctx.fillStyle='#6b4226'; ctx.fillRect(sx-13, gy-30, 3, 18); ctx.fillRect(sx+10, gy-30, 3, 18);
+  ctx.fillStyle='#7a4a30'; ctx.fillRect(sx-16, gy-33, 32, 5);
+  ctx.fillStyle='#8a8a86'; ctx.fillRect(sx-11, gy-15, 22, 15);
+  ctx.fillStyle='#9c9c96'; ctx.fillRect(sx-10, gy-15, 20, 3);
+  ctx.fillStyle='#6a6a64'; ctx.fillRect(sx-11, gy-2, 22, 2);
+  ctx.fillStyle='#2a2622'; ctx.fillRect(sx-6, gy-12, 12, 8);
+  ctx.fillStyle='#4a4038'; ctx.fillRect(sx-2, gy-24, 4, 11);
+  ctx.fillStyle='#4a4a4a'; ctx.fillRect(sx-3, gy-15, 6, 5);
+}
+
+function drawHayBale(sx, gy) {
+  groundShadow(sx, gy, 16);
+  ctx.fillStyle='#c9a030'; ctx.fillRect(sx-8, gy-14, 16, 14);
+  ctx.fillStyle='#dab246'; ctx.fillRect(sx-7, gy-13, 14, 4);
+  ctx.fillStyle='#8a6418'; ctx.fillRect(sx-8, gy-9, 16, 1); ctx.fillRect(sx-8, gy-2, 16, 1);
+  ctx.fillStyle='#b08a22'; ctx.fillRect(sx-8, gy-1, 16, 1);
+}
+
+function drawTrough(sx, gy) {
+  groundShadow(sx, gy, 22);
+  ctx.fillStyle='#6b5a42'; ctx.fillRect(sx-11, gy-8, 22, 8);
+  ctx.fillStyle='#8a7860'; ctx.fillRect(sx-10, gy-8, 20, 2);
+  ctx.fillStyle='#5a8ac0'; ctx.fillRect(sx-8, gy-6, 16, 4);
+  ctx.fillStyle='#8ac0e8'; ctx.fillRect(sx-6, gy-6, 5, 1);
+}
+
+function drawSign(sx, gy, label) {
+  groundShadow(sx, gy, 10);
+  ctx.fillStyle='#5a3f22'; ctx.fillRect(sx-1, gy-20, 3, 20);
+  ctx.fillStyle='#c9a876'; ctx.fillRect(sx-11, gy-30, 22, 13);
+  ctx.fillStyle='#8B5A2E'; ctx.fillRect(sx-11, gy-30, 22, 2);
+  ctx.fillStyle='#5a3f22'; ctx.font='6px monospace'; ctx.textAlign='center';
+  ctx.fillText(label||'', sx, gy-21);
+  ctx.textAlign='left';
+}
+
+function drawShed(sx, gy) {
+  groundShadow(sx, gy, 38);
+  ctx.fillStyle='#a88860'; ctx.fillRect(sx-16, gy-24, 32, 24);
+  ctx.fillStyle='#967855'; ctx.fillRect(sx-16, gy-24, 32, 4);
+  ctx.fillStyle='#6b4226'; ctx.fillRect(sx-18, gy-30, 36, 8);
+  ctx.fillStyle='#5a3320'; ctx.fillRect(sx-18, gy-30, 36, 2);
+  ctx.fillStyle='#3a2818'; ctx.fillRect(sx-5, gy-15, 10, 15);
+  ctx.fillStyle='#2a1c10'; ctx.fillRect(sx-4, gy-14, 8, 13);
+  ctx.fillStyle='#c9ddf0'; ctx.fillRect(sx+7, gy-19, 6, 6);
+}
+
+function drawCabbagePatch(sx, gy) {
+  ctx.fillStyle='#4a7a3a'; ctx.fillRect(sx-7, gy-2, 14, 2);
+  ctx.fillStyle='#5a8a4a'; ctx.fillRect(sx-6, gy-9, 12, 8);
+  ctx.fillStyle='#6a9a5a'; ctx.fillRect(sx-4, gy-10, 8, 6);
+  ctx.fillStyle='#3a6a2a'; ctx.fillRect(sx-2, gy-8, 4, 4);
+}
+
+function drawCarrotPatch(sx, gy) {
+  ctx.fillStyle='#3a5a25'; ctx.fillRect(sx-6, gy-2, 12, 2);
+  ctx.fillStyle='#3a7028'; ctx.fillRect(sx-5, gy-10, 3, 9); ctx.fillRect(sx, gy-12, 3, 11); ctx.fillRect(sx+4, gy-9, 3, 8);
+  ctx.fillStyle='#e88030'; ctx.fillRect(sx-4, gy-2, 2, 3); ctx.fillRect(sx+1, gy-2, 2, 3);
+}
+
+function drawTile(t,sx,sy,tx,ty) {
+  const S=TILE;
+  switch(t) {
+    case 'G': { ctx.fillStyle='#82b45a'; ctx.fillRect(sx,sy,S,S);
+              ctx.fillStyle='#72a44a'; ctx.fillRect(sx,sy,S,3);
+              const gsway = Math.sin(S.time*0.04 + tx*0.6)*1.2;
+              if((tx+ty)%3===0){ctx.fillStyle='#92c46a';ctx.fillRect(sx+4+gsway,sy-2,2,4);}
+              if((tx+ty)%4===1){ctx.fillStyle='#92c46a';ctx.fillRect(sx+12+gsway,sy-1,2,3);} break; }
+    case 'D': ctx.fillStyle='#9B8030'; ctx.fillRect(sx,sy,S,S);
+              ctx.fillStyle='#806820'; ctx.fillRect(sx,sy,S,4);
+              if((tx+ty)%5===0){ctx.fillStyle='#ab9040';ctx.fillRect(sx+4,sy+8,2,2);} break;
+    case 'F': ctx.fillStyle='#82b45a'; ctx.fillRect(sx,sy,S,S);
+              ctx.fillStyle='#8B6914'; ctx.fillRect(sx+6,sy-6,4,22); ctx.fillRect(sx+1,sy+6,14,2); ctx.fillRect(sx+1,sy+12,14,2); break;
+    case 'B': ctx.fillStyle='#c8a878'; ctx.fillRect(sx,sy,S,S);
+              ctx.fillStyle='#d8b888'; if((tx+ty)%2===0)ctx.fillRect(sx+1,sy+4,S-2,2);
+              if(ty===MAP_H-9){ctx.fillStyle='#0057B8';ctx.fillRect(sx-2,sy,S+4,5);} break;
+    case 'W': ctx.fillStyle='#8a7a20'; ctx.fillRect(sx,sy,S,S);
+              ctx.fillStyle='#b89830';ctx.fillRect(sx+2,sy+2,2,8);ctx.fillRect(sx+8,sy+3,2,7);ctx.fillRect(sx+13,sy+1,2,9); break;
+    case 'H': ctx.fillStyle='#f8f6f0'; ctx.fillRect(sx,sy,S,S);
+              if((tx>=71&&tx<=73||tx>=83&&tx<=85)&&(ty===MAP_H-9||ty===MAP_H-7)){
+                ctx.fillStyle=window.__villageLife>=3?'#ffe9a8':'#c8ddf0';ctx.fillRect(sx+4,sy+4,8,8);
+                ctx.fillStyle='#0057B8';ctx.fillRect(sx+4,sy+4,8,1);ctx.fillRect(sx+4,sy+4,1,8);ctx.fillRect(sx+7,sy+4,1,8);}
+              if(ty===MAP_H-10){ctx.fillStyle='#0057B8';ctx.fillRect(sx-2,sy,S+4,4);ctx.fillRect(sx,sy-2,S,4);} break;
+    case 'R': ctx.fillStyle='#b09840'; ctx.fillRect(sx,sy,S,S);
+              ctx.fillStyle='#a08830'; ctx.fillRect(sx,sy+4,S,2);
+              if((tx+ty)%4===0){ctx.fillStyle='#c0a850';ctx.fillRect(sx+3,sy+2,3,2);} break;
   }
 }
 
 function drawWorld(cx, cy) {
-  // SKY — layered gradients
   const g1 = ctx.createLinearGradient(0,0,0,GH*0.6);
   g1.addColorStop(0,'#3a6fb8'); g1.addColorStop(0.5,'#6898d8'); g1.addColorStop(1,'#90b8e8');
   ctx.fillStyle=g1; ctx.fillRect(0,0,GW,GH*0.6);
@@ -428,13 +661,11 @@ function drawWorld(cx, cy) {
   g2.addColorStop(0,'#90b8e8'); g2.addColorStop(0.3,'#c8ddf0'); g2.addColorStop(0.7,'#eaf4ff'); g2.addColorStop(1,'#dcecf8');
   ctx.fillStyle=g2; ctx.fillRect(0,GH*0.6,GW,GH*0.4);
 
-  // Sun — warm morning glow
   const sunX = 320 - cx*0.05, sunY = 28;
   ctx.fillStyle='rgba(255,252,235,0.3)'; ctx.fillRect(sunX-12, sunY-12, 28, 28);
   ctx.fillStyle='#fffdf0'; ctx.fillRect(sunX-6, sunY-6, 14, 14);
   ctx.fillStyle='#ffffff'; ctx.fillRect(sunX-3, sunY-3, 8, 8);
 
-  // Clouds
   for (let i=0; i<6; i++) {
     const clX = ((i*120 + S.time*0.08 + 200) % (GW+200)) - 100 - cx*0.1;
     const clY = 15 + i*18;
@@ -444,46 +675,113 @@ function drawWorld(cx, cy) {
     ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.fillRect(clX+2, clY+4, w-4, 3);
   }
 
-  // Parallax far mountains
+  // far, hazy purple peaks — greatest depth
+  for (let mx=-24; mx<GW+70; mx+=14) {
+    const mxA = mx - (cx*0.06)%14;
+    const mh = 46 + Math.sin(mx*0.09)*22 + Math.sin(mx*0.04)*16;
+    ctx.fillStyle='#8a8ab0'; ctx.fillRect(mxA, GH-mh+52, 14, mh);
+  }
   for (let mx=-20; mx<GW+60; mx+=10) {
     const mxA = mx - (cx*0.15)%10;
     const mh = 35 + Math.sin(mx*0.12)*18 + Math.sin(mx*0.06)*25;
     ctx.fillStyle='#c0dcc0'; ctx.fillRect(mxA, GH-mh+48, 10, mh);
   }
-  // Mid mountains
   for (let mx=-15; mx<GW+50; mx+=8) {
     const mxA = mx - (cx*0.3)%8;
     const mh = 24 + Math.sin(mx*0.18+1)*14 + Math.sin(mx*0.08)*20;
     ctx.fillStyle='#9cc89c'; ctx.fillRect(mxA, GH-mh+44, 8, mh);
   }
-  // Near hills
+  // atmospheric fog band where mid mountains meet the near hills
+  const fog = ctx.createLinearGradient(0, GH*0.42, 0, GH*0.62);
+  fog.addColorStop(0, 'rgba(220,235,235,0)'); fog.addColorStop(0.5, 'rgba(220,235,235,0.35)'); fog.addColorStop(1, 'rgba(220,235,235,0)');
+  ctx.fillStyle=fog; ctx.fillRect(0, GH*0.42, GW, GH*0.2);
   for (let mx=-10; mx<GW+40; mx+=6) {
     const mxA = mx - (cx*0.5)%6;
     const mh = 16 + Math.sin(mx*0.22+2)*10 + Math.sin(mx*0.1)*14;
     ctx.fillStyle='#7ab87a'; ctx.fillRect(mxA, GH-mh+40, 6, mh);
   }
 
-  // WORLD TILES
   const stx=Math.max(0,Math.floor(cx/TILE)-1), etx=Math.min(MAP_W,Math.ceil((cx+GW)/TILE)+1);
   const sty=Math.max(0,Math.floor(cy/TILE)-1), ety=Math.min(MAP_H,Math.ceil((cy+GH)/TILE)+1);
 
+  window.__villageLife = S.villageLife;
   for (let ty=sty; ty<ety; ty++)
     for (let tx=stx; tx<etx; tx++) {
       const sx=tx*TILE-cx, sy=ty*TILE-cy+GH-MAP_H*TILE;
       drawTile(map[ty][tx], sx, sy, tx, ty);
     }
 
-  // World objects (trees, bushes, rocks, flowers)
+  // groundSy = screen-y of the grass surface line — every ground object's feet sit here
+  const groundSy = GH - 4*TILE - cy;
+  const FLOWER_HUES = [['#ffd040','#fff8b0'],['#ff6a9c','#ffc0d8'],['#8a6aff','#c8b8ff']];
   for (const obj of worldObjects) {
-    const sx=obj.x-cx, sy=GH-MAP_H*TILE-cy;
-    if (sx<-30 || sx>GW+30) continue;
-    if (obj.type==='tree') drawTree(sx, sy, obj.variant);
-    else if (obj.type==='bush') { ctx.fillStyle='#6a9040'; ctx.fillRect(sx-4, sy-2, 8, 6); ctx.fillStyle='#7aaa48'; ctx.fillRect(sx-2, sy-3, 4, 3); }
-    else if (obj.type==='rock') { ctx.fillStyle='#888'; ctx.fillRect(sx-2, sy-1, 5, 4); ctx.fillStyle='#999'; ctx.fillRect(sx-1, sy, 3, 2); }
-    else if (obj.type==='flower') { ctx.fillStyle='#ffd040'; ctx.fillRect(sx, sy, 2, 2); ctx.fillStyle='#ff8'; ctx.fillRect(sx, sy-1, 1, 1); }
+    const sx=obj.x-cx;
+    if (sx<-40 || sx>GW+40) continue;
+    if (obj.type==='tree') {
+      const sway = Math.sin(S.time*0.02 + obj.seed)*1.4;
+      groundShadow(sx, groundSy, 22);
+      drawTree(sx, groundSy-24, obj.variant, sway);
+    }
+    else if (obj.type==='bush') {
+      const sway = Math.sin(S.time*0.03 + sx*0.1)*0.6;
+      groundShadow(sx, groundSy, 12);
+      ctx.fillStyle='#6a9040'; ctx.fillRect(sx-4+sway, groundSy-6, 8, 6);
+      ctx.fillStyle='#7aaa48'; ctx.fillRect(sx-2+sway, groundSy-7, 4, 3);
+    }
+    else if (obj.type==='rock') {
+      groundShadow(sx, groundSy, 9);
+      ctx.fillStyle='#888'; ctx.fillRect(sx-2, groundSy-4, 5, 4);
+      ctx.fillStyle='#999'; ctx.fillRect(sx-1, groundSy-3, 3, 2);
+    }
+    else if (obj.type==='flower') {
+      const hue = FLOWER_HUES[obj.hue||0];
+      ctx.fillStyle=hue[0]; ctx.fillRect(sx, groundSy-2, 2, 2);
+      ctx.fillStyle=hue[1]; ctx.fillRect(sx, groundSy-3, 1, 1);
+    }
+    else if (obj.type==='windmill') drawWindmill(sx, groundSy, S.time);
+    else if (obj.type==='well') drawWell(sx, groundSy);
+    else if (obj.type==='hay') drawHayBale(sx, groundSy);
+    else if (obj.type==='trough') drawTrough(sx, groundSy);
+    else if (obj.type==='sign') drawSign(sx, groundSy, obj.label);
+    else if (obj.type==='shed') drawShed(sx, groundSy);
+    else if (obj.type==='cabbage') drawCabbagePatch(sx, groundSy);
+    else if (obj.type==='carrotpatch') drawCarrotPatch(sx, groundSy);
   }
 
-  // Animals
+  // dust motes drifting through the warm morning light
+  if (Math.random() < 0.04) S.dust.push({x:cx+Math.random()*GW, y:groundSy-60-Math.random()*80, vy:0.08+Math.random()*0.1, phase:Math.random()*Math.PI*2, life:300});
+  for (let i=S.dust.length-1; i>=0; i--) {
+    const d=S.dust[i]; d.y+=d.vy; d.phase+=0.02; d.life--;
+    if (d.life<=0) { S.dust.splice(i,1); continue; }
+    const dsx = d.x + Math.sin(d.phase)*6 - cx;
+    if (dsx<-5 || dsx>GW+5) continue;
+    ctx.fillStyle=`rgba(255,250,220,${Math.min(0.5,d.life/300)})`;
+    ctx.fillRect(dsx, d.y, 1, 1);
+  }
+
+  // chimney smoke — barn + village houses, more life as tasks complete
+  if (S.time % 45 === 0) {
+    spawnSmoke(6*TILE+2, (MAP_H-9)*TILE-4);
+    if (S.villageLife>=2) { spawnSmoke(72*TILE+16, (MAP_H-10)*TILE-4); spawnSmoke(84*TILE+16, (MAP_H-9)*TILE-4); }
+  }
+  updateDrawSmoke(cx, cy);
+
+  // falling leaves from canopies
+  if (Math.random() < 0.035) {
+    const t = worldObjects.filter(o=>o.type==='tree');
+    const src = t[Math.floor(Math.random()*t.length)];
+    if (src) S.leaves.push({x:src.x+(Math.random()*10-5), y:(MAP_H-4)*TILE-34, vy:0.25+Math.random()*0.2, sway:Math.random()*Math.PI*2, life:200});
+  }
+  updateDrawLeaves(cx, cy);
+
+  // butterflies
+  for (const b of butterflies) {
+    b.phase += 0.02*b.speed; b.wing += 0.35;
+    const bx = (b.x*TILE + Math.sin(b.phase*1.3)*22) - cx;
+    const by = (GH-MAP_H*TILE-cy) + (b.baseY*TILE) + Math.sin(b.phase*2)*10 - 6;
+    if (bx>-10 && bx<GW+10) drawButterfly(bx, by, b.wing, b.phase%2<1?'#ffd94a':'#ff9ac0');
+  }
+
   const groundY = GH - MAP_H*TILE - cy;
   for (const cow of cowPositions) {
     cow.anim++; const sx=cow.x*TILE-cx;
@@ -499,49 +797,53 @@ function drawWorld(cx, cy) {
     if (sx>-20 && sx<GW+20) drawSheep(sx, groundY + sh.y*TILE, sh.anim);
   }
 
-  // Farm cow (task cow)
+  // farmer NPC
+  farmerNPC.anim++;
+  const fnSX = farmerNPC.x*TILE-cx;
+  if (fnSX>-30 && fnSX<GW+30) drawFarmer(fnSX, groundY + farmerNPC.y*TILE, farmerNPC.dir, farmerNPC.anim);
+
   farmCow.anim++;
   const fcSX = farmCow.x*TILE - cx;
   drawCow(fcSX, groundY + farmCow.y*TILE, farmCow.dir, farmCow.anim);
 
-  // Wheat collectibles
   for (const w of wheatItems) {
     if (w.collected) continue;
     const wx=w.x-cx, wy=w.y-cy+GH-MAP_H*TILE;
-    // Stalk
     ctx.fillStyle='#c4a020'; ctx.fillRect(wx-1, wy-10, 2, 12);
     ctx.fillStyle='#d4b030'; ctx.fillRect(wx, wy-12, 2, 4);
-    // Sparkle
     const a=0.3+0.3*Math.sin(S.time*0.06+wx);
     ctx.fillStyle=`rgba(255,255,200,${a})`; ctx.fillRect(wx, wy-14, 2, 2);
   }
+
+  // world-life extras: village children waving once the community has been helped
+  if (S.villageLife>=3) {
+    for (const h of deliveryHouses) {
+      const sx = h.x*TILE - cx + 26, sy = groundY + (h.y+6)*TILE;
+      const wave = Math.sin(S.time*0.08)*2;
+      ctx.fillStyle='#e8c090'; ctx.fillRect(sx, sy, 5, 8);
+      ctx.fillStyle='#d04030'; ctx.fillRect(sx, sy-3, 5, 4);
+      ctx.fillStyle='#e8c090'; ctx.fillRect(sx+5, sy+1+wave, 2, 3);
+    }
+  }
 }
 
-function drawTile(t,sx,sy,tx,ty) {
-  const S=TILE;
-  switch(t) {
-    case 'G': ctx.fillStyle='#82b45a'; ctx.fillRect(sx,sy,S,S);
-              ctx.fillStyle='#72a44a'; ctx.fillRect(sx,sy,S,3);
-              if((tx+ty)%3===0){ctx.fillStyle='#92c46a';ctx.fillRect(sx+4,sy-2,2,4);}
-              if((tx+ty)%4===1){ctx.fillStyle='#92c46a';ctx.fillRect(sx+12,sy-1,2,3);} break;
-    case 'D': ctx.fillStyle='#9B8030'; ctx.fillRect(sx,sy,S,S);
-              ctx.fillStyle='#806820'; ctx.fillRect(sx,sy,S,4);
-              if((tx+ty)%5===0){ctx.fillStyle='#ab9040';ctx.fillRect(sx+4,sy+8,2,2);} break;
-    case 'F': ctx.fillStyle='#82b45a'; ctx.fillRect(sx,sy,S,S);
-              ctx.fillStyle='#8B6914'; ctx.fillRect(sx+6,sy-6,4,22); ctx.fillRect(sx+1,sy+6,14,2); ctx.fillRect(sx+1,sy+12,14,2); break;
-    case 'B': ctx.fillStyle='#c8a878'; ctx.fillRect(sx,sy,S,S);
-              ctx.fillStyle='#d8b888'; if((tx+ty)%2===0)ctx.fillRect(sx+1,sy+4,S-2,2);
-              if(ty===MAP_H-9){ctx.fillStyle='#0057B8';ctx.fillRect(sx-2,sy,S+4,5);} break;
-    case 'W': ctx.fillStyle='#8a7a20'; ctx.fillRect(sx,sy,S,S);
-              ctx.fillStyle='#b89830';ctx.fillRect(sx+2,sy+2,2,8);ctx.fillRect(sx+8,sy+3,2,7);ctx.fillRect(sx+13,sy+1,2,9); break;
-    case 'H': ctx.fillStyle='#f8f6f0'; ctx.fillRect(sx,sy,S,S);
-              if((tx>=71&&tx<=73||tx>=83&&tx<=85)&&(ty===MAP_H-9||ty===MAP_H-7)){
-                ctx.fillStyle='#c8ddf0';ctx.fillRect(sx+4,sy+4,8,8);
-                ctx.fillStyle='#0057B8';ctx.fillRect(sx+4,sy+4,8,1);ctx.fillRect(sx+4,sy+4,1,8);ctx.fillRect(sx+7,sy+4,1,8);}
-              if(ty===MAP_H-10){ctx.fillStyle='#0057B8';ctx.fillRect(sx-2,sy,S+4,4);ctx.fillRect(sx,sy-2,S,4);} break;
-    case 'R': ctx.fillStyle='#b09840'; ctx.fillRect(sx,sy,S,S);
-              ctx.fillStyle='#a08830'; ctx.fillRect(sx,sy+4,S,2);
-              if((tx+ty)%4===0){ctx.fillStyle='#c0a850';ctx.fillRect(sx+3,sy+2,3,2);} break;
+// ── SMOKE / LEAVES (lightweight, generic drift particles) ──
+function spawnSmoke(x,y){ S.smoke.push({x,y,vx:(Math.random()-0.5)*0.15,vy:-0.25-Math.random()*0.15,life:120,size:2}); }
+function updateDrawSmoke(cx,cy){
+  for(let i=S.smoke.length-1;i>=0;i--){
+    const p=S.smoke[i]; p.x+=p.vx; p.y+=p.vy; p.size+=0.02; p.life--;
+    if(p.life<=0){ S.smoke.splice(i,1); continue; }
+    const a=Math.min(0.35,p.life/200);
+    const sx=p.x-cx, sy=p.y-cy+GH-MAP_H*TILE;
+    ctx.fillStyle=`rgba(220,220,220,${a})`; ctx.fillRect(sx-p.size/2, sy-p.size/2, p.size, p.size);
+  }
+}
+function updateDrawLeaves(cx,cy){
+  for(let i=S.leaves.length-1;i>=0;i--){
+    const l=S.leaves[i]; l.y+=l.vy; l.sway+=0.05; l.life--;
+    if(l.life<=0){ S.leaves.splice(i,1); continue; }
+    const sx=(l.x+Math.sin(l.sway)*8)-cx, sy=l.y-cy+GH-MAP_H*TILE;
+    ctx.fillStyle='#c47a2a'; ctx.fillRect(sx, sy, 2, 2);
   }
 }
 
@@ -549,9 +851,15 @@ function drawTile(t,sx,sy,tx,ty) {
 function spawnParticles(x,y,c,n) {
   for(let i=0;i<n;i++) S.particles.push({x,y,vx:(Math.random()-0.5)*3,vy:-Math.random()*4-1,life:25+Math.random()*20,c});
 }
+function spawnFloatText(x,y,text,color) {
+  S.floatTexts.push({x,y,text,color:color||'#fff5d0',life:50,vy:-0.6});
+}
 function updateParticles() {
   for(let i=S.particles.length-1;i>=0;i--) {
     const p=S.particles[i]; p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.life--; if(p.life<=0)S.particles.splice(i,1);
+  }
+  for(let i=S.floatTexts.length-1;i>=0;i--){
+    const t=S.floatTexts[i]; t.y+=t.vy; t.life--; if(t.life<=0)S.floatTexts.splice(i,1);
   }
 }
 function drawParticles() {
@@ -559,12 +867,21 @@ function drawParticles() {
     const a=Math.min(1,p.life/15);
     ctx.fillStyle=p.c.replace('1)',a+')'); ctx.fillRect(p.x-S.camX,p.y-S.camY+GH-MAP_H*TILE,2,2);
   }
+  ctx.font='8px monospace'; ctx.textAlign='center';
+  for(const t of S.floatTexts) {
+    const a=Math.min(1,t.life/20);
+    ctx.fillStyle=t.color.replace(')', `,${a})`).replace('rgb','rgba');
+    ctx.fillStyle = t.color; ctx.globalAlpha=a;
+    ctx.fillText(t.text, t.x-S.camX, t.y-S.camY+GH-MAP_H*TILE);
+    ctx.globalAlpha=1;
+  }
+  ctx.textAlign='left';
 }
 
 // ── DIALOGUE ──
-function showDialogue(texts,cb) {
+function showDialogue(texts,speaker,cb) {
   S.dialogue=true; S.dialogueQueue=Array.isArray(texts)?texts:[texts]; S.diaCb=cb||null;
-  diaBox.classList.add('active'); diaText.textContent=S.dialogueQueue[0];
+  diaBox.classList.add('active'); diaName.textContent=speaker||''; diaText.textContent=S.dialogueQueue[0];
 }
 function advanceDialogue() {
   S.dialogueQueue.shift();
@@ -572,39 +889,105 @@ function advanceDialogue() {
   else { S.dialogue=false; diaBox.classList.remove('active'); if(S.diaCb){const c=S.diaCb;S.diaCb=null;c();} }
 }
 
-// ── STORY PANELS ──
+// ── STORY PANELS (historical interludes) ──
 function showStoryPanel(year,title,text,cb) {
   cinematic.classList.remove('hidden'); S.playing=false;
   cinematic.innerHTML=`<div class="cin-logo">QUMËSHTORJA VITA</div><div class="cin-year" style="font-size:clamp(42px,6vw,72px)">${year}</div><div class="cin-title">${title}</div><div class="cin-divider"></div><div class="cin-story">${text}</div><button class="cin-btn" id="sb">Continue</button>`;
   document.getElementById('sb').onclick=()=>{cinematic.classList.add('hidden');S.playing=true;cb();};
 }
 
-// ── HUD ──
-function setTask(idx) {
-  S.currentTask=idx; S.taskProgress=0; S.taskTarget=TASKS[idx].target;
-  hudObj.textContent=TASKS[idx].obj;
-  hudProgress.textContent=TASKS[idx].target>0?`${S.taskProgress} / ${S.taskTarget}`:'';
-  hudProgress.style.display=TASKS[idx].target>0?'inline-block':'none';
-  hudEl.classList.add('active');
-}
-
 // ── TASK COMPLETION ──
 function completeTask(idx) {
   spawnParticles(S.px,S.py,'rgba(255,215,0,1)',25);
-  if(idx===0){showDialogue(['FARMER: "Every morning, I wake before the sun. The cows need feeding. The fields need tending. This is how it has always been."','FARMER: "First, I need wheat from the field. The cows will be hungry."'],()=>setTask(1));}
-  else if(idx===1){showDialogue(['FARMER: "Good wheat. Now to feed the cow by the barn."'],()=>setTask(2));}
-  else if(idx===2){showStoryPanel('2003','A Partnership Is Born','In Istog, a small town in western Kosovo, Devolli Group signs a historic agreement with Tetra Pak of Sweden.<br><br>For the first time, UHT technology — ultra-high temperature processing — will come to Kosovo.<br><br>But before the factory walls go up, before the machines arrive... the real foundation is being laid by farmers just like this one.',()=>{setTask(3);cowReady=true;});}
-  else if(idx===3){showDialogue(['FARMER: "Fresh milk. The neighbours are waiting for their morning delivery. I must hurry."'],()=>{setTask(4);});}
-  else if(idx===4){S.levelComplete=true;showStoryPanel('2003','The Foundation Is Laid','From farmers like this one, from thousands of families across Kosovo\'s highlands, VITA was born.<br><br>Devolli Group\'s vision — combined with Tetra Pak\'s technology — would soon transform these humble milk deliveries into the largest dairy in the Balkans.<br><br>280 employees. 1,500+ farmers. One promise: Fresh from nature. Trusted every day.<br><br><span style="color:var(--blue);font-weight:700">Level 1 Complete</span><br><span style="font-size:11px;color:var(--text-dim)">VITA — Burim i jetës</span>',()=>{initGame();cinematic.classList.remove('hidden');cinematic.innerHTML=`<div class="cin-logo">QUMËSHTORJA VITA</div><div class="cin-year" style="font-size:clamp(34px,5vw,52px)">VITA</div><div class="cin-title">Level 1 Complete</div><div class="cin-divider"></div><div class="cin-story" style="color:var(--blue-dark);font-weight:500">"VITA është qumështi i parë, në Kosovë, i përpunuar me teknologjinë më moderne UHT."<br><br><span style="color:var(--text-dim)">— Me ty u rrita —</span></div><button class="cin-btn" onclick="startGame()">Play Again</button><div class="cin-sub">Level 2 coming soon…</div>`;});}
+  if(idx===0){
+    S.villageLife=1;
+    showDialogue([
+      'Ah— good morning, mikunë. Another day, another sunrise over Istog.',
+      'These hands have milked cows since before you were born. But today feels different somehow.',
+      'Would you lend me a hand today? Start by gathering some wheat from the field — the cows are hungry.'
+    ],'Farmer Hashim',()=>{S.currentTask=1;S.taskProgress=0;S.taskTarget=TASK_TARGET[1];});
+  }
+  else if(idx===1){
+    S.villageLife=2;
+    showDialogue(['Good, good — that’s plenty. Now bring it to her by the barn. She’s been waiting.'],'Farmer Hashim',()=>{S.currentTask=2;});
+  }
+  else if(idx===2){
+    showStoryPanel('2003','A Partnership Is Born','In Istog, a small town in western Kosovo, Devolli Group signs a historic agreement with Tetra Pak of Sweden.<br><br>For the first time, UHT technology — ultra-high temperature processing — will come to Kosovo.<br><br>But before the factory walls go up, before the machines arrive... the real foundation is being laid by farmers just like this one.',
+      ()=>{
+        S.villageLife=3; S.currentTask=3; S.taskProgress=0; S.taskTarget=TASK_TARGET[3];
+        showDialogue(['She\'s ready now. Walk up to her and press Enter to milk her — gently, mind you.'],'Farmer Hashim',()=>{cowReady=true;});
+      });
+  }
+  else if(idx===3){
+    showDialogue(['There we go. Fresh, warm milk — nature’s gift. The neighbours are waiting for their morning delivery. Would you carry it down for me?'],'Farmer Hashim',()=>{S.currentTask=4;S.taskProgress=0;S.taskTarget=TASK_TARGET[4];});
+  }
+  else if(idx===4){
+    S.villageLife=4;
+    S.levelComplete=true;
+    startEnding();
+  }
+}
+
+// ── ENDING CUTSCENE ──
+let ending=null;
+function startEnding(){
+  ending = {phase:'rise', t:0, wagonX:20*TILE};
+}
+function updateEnding(){
+  if(!ending) return;
+  ending.t++;
+  if(ending.phase==='rise' && ending.t>90){ ending.phase='wagon'; ending.t=0; }
+  else if(ending.phase==='wagon'){
+    ending.wagonX += 0.9;
+    if(ending.wagonX > 96*TILE){ ending.phase='fade'; ending.t=0; }
+  }
+  else if(ending.phase==='fade' && ending.t===1){
+    endFade.classList.add('on');
+  }
+  else if(ending.phase==='fade' && ending.t>150){
+    ending.phase='panel'; ending.t=0;
+    endFade.classList.remove('on');
+    showStoryPanel('2003','The Foundation Is Laid','From farmers like this one, from thousands of families across Kosovo\'s highlands, VITA was born.<br><br>Devolli Group\'s vision — combined with Tetra Pak\'s technology — would soon transform these humble milk deliveries into the largest dairy in the Balkans.<br><br>280 employees. 1,500+ farmers. One promise: Fresh from nature. Trusted every day.<br><br><span style="color:var(--blue);font-weight:700">Level 1 Complete</span><br><span style="font-size:11px;color:var(--text-dim)">VITA — Burim i jetës</span>',
+      ()=>{
+        initGame();
+        cinematic.classList.remove('hidden');
+        cinematic.innerHTML=`<div class="cin-logo">QUMËSHTORJA VITA</div><div class="cin-year" style="font-size:clamp(34px,5vw,52px)">VITA</div><div class="cin-title">Level 1 Complete</div><div class="cin-divider"></div><div class="cin-story" style="color:var(--blue-dark);font-weight:500">"VITA është qumështi i parë, në Kosovë, i përpunuar me teknologjinë më moderne UHT."<br><br><span style="color:var(--text-dim)">— Me ty u rrita —</span></div><button class="cin-btn" onclick="location.reload()">Play Again</button><div class="cin-sub">Level 2 coming soon…</div>`;
+        ending=null;
+      });
+  }
+}
+function renderEnding(){
+  if(!ending) return;
+  const riseAmt = ending.phase==='rise' ? Math.min(1, ending.t/90) : 1;
+  const camY = -riseAmt*70;
+  const camX = Math.max(0, Math.min(MAP_W*TILE-GW, ending.wagonX - GW/2));
+  ctx.clearRect(0,0,GW,GH);
+  drawWorld(camX, camY);
+  if(ending.phase==='wagon' || ending.phase==='fade'){
+    const groundY = GH - MAP_H*TILE - camY;
+    const wx = ending.wagonX - camX;
+    const wy = groundY + (MAP_H-4)*TILE - 16;
+    drawWagon(wx, wy);
+  }
+  drawParticles();
+}
+function drawWagon(x,y){
+  ctx.fillStyle='#6B4226'; ctx.fillRect(x-10,y-6,24,10);
+  ctx.fillStyle='#8B5A2E'; ctx.fillRect(x-10,y-9,24,3);
+  ctx.fillStyle='#2a2a2a'; ctx.fillRect(x-8,y+3,6,6); ctx.fillRect(x+6,y+3,6,6);
+  ctx.fillStyle='#555'; ctx.fillRect(x-6,y+5,2,2); ctx.fillRect(x+8,y+5,2,2);
+  // milk can
+  ctx.fillStyle='#d8dde2'; ctx.fillRect(x-3,y-16,10,9);
+  ctx.fillStyle='#0057B8'; ctx.fillRect(x-3,y-13,10,2);
+  ctx.fillStyle='#eef3f7'; ctx.fillRect(x-1,y-15,3,3);
 }
 
 // ── UPDATE ──
-let cowReady=false, cowTimer=0;
+let cowReady=false;
 function update() {
   const p=S; if(p.dialogue||p.intro||p.levelComplete)return;
   p.time++;
 
-  // Movement
   p.vx=0;
   if(p.keys.ArrowLeft&&!p.keys.ArrowRight){p.vx=-SPEED;p.facing=-1;}
   if(p.keys.ArrowRight&&!p.keys.ArrowLeft){p.vx=SPEED;p.facing=1;}
@@ -616,41 +999,78 @@ function update() {
   const groundY=(MAP_H-4)*TILE-PH;
   if(p.py>=groundY){p.py=groundY;p.vy=0;p.onGround=true;}
   if(p.py<0){p.py=0;p.vy=0;}
-  if(p.vx!==0){p.animTimer++;if(p.animTimer>4){p.animTimer=0;p.animFrame++;}}
-  else p.animFrame=0;
+  if(p.vx!==0){
+    p.animTimer++;
+    if(p.animTimer>4){
+      p.animTimer=0; p.animFrame++;
+      if(p.onGround && p.animFrame%2===0) footstepSound();
+    }
+  } else p.animFrame=0;
 
-  // Camera
   p.camX=p.px-GW/2+PW/2; p.camX=Math.max(0,Math.min(MAP_W*TILE-GW,p.camX));
   p.camY=Math.min(0,p.py-GH/2);
 
-  // ── TASK LOGIC ──
-  // Task 0: explore trigger
-  if(p.currentTask===0&&p.px>100)completeTask(0);
-  // Task 1: wheat
-  if(p.currentTask===1){for(const w of wheatItems){if(w.collected)continue;if(Math.abs(p.px+PW/2-w.x)<10&&Math.abs(p.py+PH/2-w.y)<16){w.collected=true;p.taskProgress++;spawnParticles(w.x,w.y,'rgba(255,215,0,1)',10);if(p.taskProgress>=TASKS[1].target)completeTask(1);}}hudProgress.textContent=`${p.taskProgress} / ${TASKS[1].target}`;}
-  // Task 2: feed cow
-  if(p.currentTask===2){const cx=farmCow.x*TILE+TILE/2,cy=farmCow.y*TILE+TILE/2;if(Math.abs(p.px+PW/2-cx)<28&&Math.abs(p.py+PH/2-cy)<28&&!p.cowFed){p.cowFed=true;p.taskProgress++;spawnParticles(cx,cy,'rgba(100,200,100,1)',18);showDialogue(['FARMER: "There you go, girl. Eat up. Fresh milk will come soon."'],()=>{cowTimer=200;});}}
-  // Cow timer
-  if(cowTimer>0){cowTimer--;if(cowTimer===0){cowReady=true;showDialogue(['FARMER: "The cow is ready. Approach her and press Enter to milk."'],()=>{});}}
-  // Task 3: milk
-  if(p.currentTask===3&&cowReady){const cx=farmCow.x*TILE+TILE/2,cy=farmCow.y*TILE+TILE/2;if(Math.abs(p.px+PW/2-cx)<28&&Math.abs(p.py+PH/2-cy)<28&&p.keys.Enter){p.keys.Enter=false;p.taskProgress++;spawnParticles(cx,cy+20,'rgba(255,255,255,1)',12);if(p.taskProgress>=TASKS[3].target){cowReady=false;completeTask(3);}}hudProgress.textContent=`${p.taskProgress} / ${TASKS[3].target}`;}
-  // Task 4: deliver
-  if(p.currentTask===4){for(const h of deliveryHouses){const hx=h.x*TILE+TILE,hy=h.y*TILE;if(Math.abs(p.px+PW/2-hx)<22&&Math.abs(p.py+PH/2-hy)<26&&p.keys.Enter){p.keys.Enter=false;p.taskProgress++;spawnParticles(hx,hy,'rgba(100,180,255,1)',14);showDialogue(['NEIGHBOUR: "Faleminderit! The milk is fresh and delicious. Your farm is a blessing to this village."'],()=>{});if(p.taskProgress>=TASKS[4].target)completeTask(4);}}hudProgress.textContent=`${p.taskProgress} / ${TASKS[4].target}`;}
+  // meet the farmer — approaching him starts the story naturally
+  if(p.currentTask===0 && !farmerNPC.talked){
+    const dx=Math.abs(p.px+PW/2-(farmerNPC.x*TILE+8)), dy=Math.abs(p.py+PH/2-(farmerNPC.y*TILE+8));
+    if(dx<28 && dy<32){ farmerNPC.talked=true; completeTask(0); }
+  }
+  // wheat
+  if(p.currentTask===1){for(const w of wheatItems){if(w.collected)continue;if(Math.abs(p.px+PW/2-w.x)<10&&Math.abs(p.py+PH/2-w.y)<22){w.collected=true;p.taskProgress++;spawnParticles(w.x,w.y,'rgba(255,215,0,1)',10);spawnFloatText(w.x,w.y-16,'+1 wheat');pickupSound();if(p.taskProgress>=TASK_TARGET[1])completeTask(1);}}}
+  // feed cow
+  if(p.currentTask===2){const cx=farmCow.x*TILE+TILE/2,cy=farmCow.y*TILE+TILE/2;if(Math.abs(p.px+PW/2-cx)<28&&Math.abs(p.py+PH/2-cy)<28&&!p.cowFed){p.cowFed=true;p.taskProgress++;spawnParticles(cx,cy,'rgba(100,200,100,1)',18);cowbellSound();showDialogue(['There you go, girl. Eat up. Fresh milk will come soon.'],'Farmer Hashim',()=>{completeTask(2);});}}
+  // milk
+  if(p.currentTask===3&&cowReady){const cx=farmCow.x*TILE+TILE/2,cy=farmCow.y*TILE+TILE/2;if(Math.abs(p.px+PW/2-cx)<28&&Math.abs(p.py+PH/2-cy)<28&&p.keys.Enter){p.keys.Enter=false;p.taskProgress++;spawnParticles(cx,cy+20,'rgba(255,255,255,1)',12);spawnFloatText(cx,cy-4,'+1 milk','#d8f0ff');milkSound();if(p.taskProgress>=TASK_TARGET[3]){cowReady=false;completeTask(3);}}}
+  // deliver
+  if(p.currentTask===4){for(const h of deliveryHouses){const hx=h.x*TILE+TILE,hy=h.y*TILE;if(Math.abs(p.px+PW/2-hx)<22&&Math.abs(p.py+PH/2-hy)<26&&p.keys.Enter){p.keys.Enter=false;p.taskProgress++;spawnParticles(hx,hy,'rgba(100,180,255,1)',14);chimeSound();showDialogue(['Faleminderit! The milk is fresh and delicious. Your farm is a blessing to this village.'],'Neighbour',()=>{});if(p.taskProgress>=TASK_TARGET[4])completeTask(4);}}}
+
+  // petting non-task animals — pure delight, no progression
+  if(p.petCooldown>0) p.petCooldown--;
+  if(p.keys.Enter && p.petCooldown<=0){
+    const near = [...cowPositions,...sheepPositions,...chickenPositions].find(a=>{
+      const ax=a.x*TILE+8, ay=a.y*TILE+8;
+      return Math.abs(p.px+PW/2-ax)<20 && Math.abs(p.py+PH/2-ay)<20;
+    });
+    if(near){ p.petCooldown=30; p.keys.Enter=false; spawnParticles(near.x*TILE+8,near.y*TILE,'rgba(255,140,180,1)',8); petSound(); }
+  }
+}
+
+// ── INTERACT PROMPTS (Zelda-style bubble, replaces HUD) ──
+function drawPrompt(wx, wy) {
+  const bob = Math.sin(S.time*0.15)*2;
+  const sx = wx-S.camX, sy = wy-S.camY+GH-MAP_H*TILE-26+bob;
+  ctx.fillStyle='rgba(18,58,111,0.85)'; ctx.fillRect(sx-11,sy-7,22,11);
+  ctx.fillStyle='rgba(18,58,111,0.85)'; ctx.fillRect(sx-2,sy+3,4,4);
+  ctx.fillStyle='#fff'; ctx.font='7px monospace'; ctx.textAlign='center';
+  ctx.fillText('ENTER', sx, sy);
+  ctx.textAlign='left';
+}
+function drawPrompts(){
+  if(S.dialogue||S.intro||S.levelComplete) return;
+  const p=S;
+  if(p.currentTask===3 && cowReady){
+    const cx=farmCow.x*TILE+TILE/2, cy=farmCow.y*TILE+TILE/2;
+    if(Math.abs(p.px+PW/2-cx)<28&&Math.abs(p.py+PH/2-cy)<28) drawPrompt(cx,cy-10);
+  }
+  if(p.currentTask===4){
+    for(const h of deliveryHouses){
+      const hx=h.x*TILE+TILE, hy=h.y*TILE;
+      if(Math.abs(p.px+PW/2-hx)<22&&Math.abs(p.py+PH/2-hy)<26) drawPrompt(hx,hy-10);
+    }
+  }
 }
 
 // ── RENDER ──
 function render() {
+  if(S.intro){ renderHistoryBg(); requestAnimationFrame(render); return; }
+  if(ending){ renderEnding(); updateParticles(); requestAnimationFrame(render); return; }
+
   ctx.clearRect(0,0,GW,GH);
   drawWorld(S.camX,S.camY);
-  // Player
   drawPlayer(S.px-S.camX, S.py-S.camY+GH-MAP_H*TILE);
+  drawPrompts();
   drawParticles();
 
-  // Wheat count indicator
-  if(S.currentTask===1&&S.wheatCollected>0)
-    for(let i=0;i<S.wheatCollected;i++){ctx.fillStyle='#C4A020';ctx.fillRect(GW-18-i*12,10,6,8);ctx.fillStyle='#D4B030';ctx.fillRect(GW-17-i*12,9,4,2);}
-
-  // Ambient birds
   const birdX=((S.time*0.3)%(GW+60))-30, birdY=25+Math.sin(S.time*0.02)*8;
   ctx.fillStyle='#333'; ctx.fillRect(birdX,birdY,4,2); ctx.fillRect(birdX-2,birdY+1,3,1);
   if((S.time+90)%180<90){const b2X=((S.time*0.25+100)%(GW+60))-30;ctx.fillRect(b2X,birdY+10,4,2);}
@@ -658,33 +1078,104 @@ function render() {
   requestAnimationFrame(render);
 }
 
+// ── HISTORY SCREEN (real VITA founding story, 1989 → 2003) ──
+// Only verified public facts are used — no invented dates or events.
+const HISTORY_CARDS = [
+  {year:'1989', text:'In a small corner of Kosovo, the Devolli family opens a modest trading business — Devolli Commerce. Their promise: honest products, at a fair price.'},
+  {year:'1990s', text:'Through the decade, that promise travels from town to town. Shelf by shelf, Devolli earns the trust of families across Kosovo.'},
+  {year:'Early 2000s', text:'The Devolli family looks toward the hills of Istog with a new ambition — not just to deliver products, but to make one of their own.'},
+  {year:'Nov 19, 2003', text:'In partnership with Sweden’s Tetra Pak, Kosovo’s first UHT milk production line begins to turn. A new name is born: VITA.'},
+];
+let historyIdx = 0, historyActive = true;
+function showHistoryCard(i){
+  historyIdx = i;
+  historyYear.textContent = HISTORY_CARDS[i].year;
+  historyText.textContent = HISTORY_CARDS[i].text;
+  historyCard.classList.remove('in'); void historyCard.offsetWidth; historyCard.classList.add('in');
+}
+function advanceHistory(){
+  if(!historyActive) return;
+  if(historyIdx < HISTORY_CARDS.length-1) showHistoryCard(historyIdx+1);
+  else { historyActive=false; finishHistory(); }
+}
+function finishHistory(){
+  historyScreen.classList.add('hidden');
+  yearFlash.classList.add('show');
+  setTimeout(()=>{ S.intro=false; startGame(); yearFlash.classList.remove('show'); }, 1500);
+  setTimeout(()=>{ yearFlash.style.display='none'; }, 2000);
+}
+showHistoryCard(0);
+
+// Gentle ambient backdrop (sun, sky, hills) behind the history screen — no gameplay elements
+let bgT = 0;
+function renderHistoryBg(){
+  bgT++;
+  ctx.clearRect(0,0,GW,GH);
+  const g1 = ctx.createLinearGradient(0,0,0,GH*0.6);
+  g1.addColorStop(0,'#3a6fb8'); g1.addColorStop(0.5,'#6898d8'); g1.addColorStop(1,'#90b8e8');
+  ctx.fillStyle=g1; ctx.fillRect(0,0,GW,GH*0.6);
+  const g2 = ctx.createLinearGradient(0,GH*0.6,0,GH);
+  g2.addColorStop(0,'#90b8e8'); g2.addColorStop(0.3,'#c8ddf0'); g2.addColorStop(0.7,'#eaf4ff'); g2.addColorStop(1,'#dcecf8');
+  ctx.fillStyle=g2; ctx.fillRect(0,GH*0.6,GW,GH*0.4);
+
+  const sunX = 240, sunY = 40 + Math.sin(bgT*0.004)*2;
+  ctx.fillStyle='rgba(255,252,235,0.3)'; ctx.fillRect(sunX-14, sunY-14, 32, 32);
+  ctx.fillStyle='#fffdf0'; ctx.fillRect(sunX-7, sunY-7, 16, 16);
+  ctx.fillStyle='#ffffff'; ctx.fillRect(sunX-3, sunY-3, 8, 8);
+
+  for (let i=0; i<6; i++) {
+    const clX = ((i*120 + bgT*0.06 + 200) % (GW+200)) - 100;
+    const clY = 15+i*18, w=20+i*12;
+    ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.fillRect(clX, clY, w, 8);
+    ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.fillRect(clX+4, clY-4, w-6, 6);
+    ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.fillRect(clX+2, clY+4, w-4, 3);
+  }
+  for (let mx=-20; mx<GW+60; mx+=10){ const mxA=mx-(bgT*0.03)%10; const mh=35+Math.sin(mx*0.12)*18+Math.sin(mx*0.06)*25; ctx.fillStyle='#c0dcc0'; ctx.fillRect(mxA, GH-mh+48, 10, mh); }
+  for (let mx=-15; mx<GW+50; mx+=8){ const mxA=mx-(bgT*0.06)%8; const mh=24+Math.sin(mx*0.18+1)*14+Math.sin(mx*0.08)*20; ctx.fillStyle='#9cc89c'; ctx.fillRect(mxA, GH-mh+44, 8, mh); }
+  for (let mx=-10; mx<GW+40; mx+=6){ const mxA=mx-(bgT*0.1)%6; const mh=16+Math.sin(mx*0.22+2)*10+Math.sin(mx*0.1)*14; ctx.fillStyle='#7ab87a'; ctx.fillRect(mxA, GH-mh+40, 6, mh); }
+
+  const birdX=((bgT*0.3)%(GW+60))-30, birdY=25+Math.sin(bgT*0.02)*8;
+  ctx.fillStyle='#333'; ctx.fillRect(birdX,birdY,4,2); ctx.fillRect(birdX-2,birdY+1,3,1);
+  if((bgT+90)%180<90){const b2X=((bgT*0.25+100)%(GW+60))-30;ctx.fillRect(b2X,birdY+10,4,2);}
+}
+
 // ── INIT ──
 function initGame() {
-  S.px=48; S.py=(MAP_H-4)*TILE-PH; S.vx=0; S.vy=0; S.facing=1; S.onGround=true;
+  S.px=140; S.py=(MAP_H-4)*TILE-PH; S.vx=0; S.vy=0; S.facing=1; S.onGround=true;
   S.animFrame=0; S.animTimer=0; S.jumping=false;
   S.currentTask=0; S.taskProgress=0; S.taskTarget=0;
-  S.wheatCollected=0; S.cowFed=false; cowReady=false; S.cowReady=false; cowTimer=0;
-  S.milkCollected=0; S.deliveries=0; S.particles=[]; S.camX=0; S.camY=0;
-  S.dialogue=false; S.levelComplete=false; S.keys={}; S.time=0;
-  buildWorld(); hudEl.classList.remove('active');
+  S.cowFed=false; cowReady=false;
+  S.particles=[]; S.floatTexts=[]; S.smoke=[]; S.leaves=[]; S.dust=[];
+  S.camX=0; S.camY=0;
+  S.dialogue=false; S.levelComplete=false; S.keys={}; S.time=0; S.villageLife=0; S.petCooldown=0;
+  buildWorld();
 }
 
 function startGame() {
-  S.intro=false; S.playing=true; cinematic.classList.add('hidden');
-  initGame(); setTask(0);
-  showDialogue(['FARMER: "Another morning in Istog. The air is cool and fresh. The mountains watch over us like old friends."','FARMER: "Today, like every day, there is work to do. Walk around the farm to see what needs attention."'],()=>{});
+  S.playing=true;
+  initGame();
+  showDialogue([
+    'Mm— morning already. The mountains never let me sleep in.',
+    'Come, walk with me a while.'
+  ],'Farmer Hashim',()=>{});
 }
 
 // ── KEY HANDLING ──
 window.addEventListener('keydown',e=>{
   S.keys[e.key]=true;
-  if(e.key==='Enter'){e.preventDefault();if(S.dialogue)advanceDialogue();if(S.intro&&!S.playing)startGame();}
+  if(S.intro){ advanceHistory(); return; }
+  if(e.key==='Enter'){e.preventDefault();if(S.dialogue)advanceDialogue();}
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
 });
 window.addEventListener('keyup',e=>{S.keys[e.key]=false;if(e.key===' ')S.jumping=false;});
 
+window.addEventListener('click',()=>{
+  if(S.intro) advanceHistory();
+});
+
 // Touch controls for mobile
-window.addEventListener('touchstart',e=>{e.preventDefault();if(S.intro){startGame();return;}
+window.addEventListener('touchstart',e=>{e.preventDefault();
+  if(S.intro){ advanceHistory(); return; }
   const t=e.touches[0],rect=canvas.getBoundingClientRect();
   const rx=(t.clientX-rect.left)/rect.width*GW,ry=(t.clientY-rect.top)/rect.height*GH;
   if(rx<GW/3)S.keys.ArrowLeft=true;else if(rx>GW*2/3)S.keys.ArrowRight=true;
@@ -693,7 +1184,8 @@ window.addEventListener('touchstart',e=>{e.preventDefault();if(S.intro){startGam
 window.addEventListener('touchend',e=>{e.preventDefault();S.keys.ArrowLeft=false;S.keys.ArrowRight=false;S.keys[' ']=false;S.keys.Enter=false;});
 
 // ── GAME LOOP ──
-initGame(); S.intro=true;
+initGame();
+initAudio(); // context starts suspended; first click/keydown (on the history screen) unlocks it
 render();
 setInterval(()=>{if(S.playing)update();updateParticles();},1000/60);
 </script>
