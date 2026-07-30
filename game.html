@@ -162,13 +162,13 @@
   }
   .dialogue-choice.sel { background:rgba(0,87,184,0.10); color:var(--blue-dark); font-weight:700; }
 
-  /* ── Task bar: current objective + carried inventory, top of screen ── */
+  /* ── Task bar: current objective only, top of screen ── */
   .taskbar {
     position:absolute; top:clamp(10px,2.2vh,20px); left:50%; transform:translateX(-50%);
     background:rgba(255,255,255,0.92); backdrop-filter:blur(10px);
     border:1.5px solid rgba(0,87,184,0.15); border-radius:100px;
     padding:8px 20px; z-index:14; pointer-events:none;
-    display:flex; align-items:center; gap:16px; white-space:nowrap;
+    white-space:nowrap;
     box-shadow:0 6px 20px rgba(0,87,184,0.10);
     opacity:0; transition:opacity 0.4s var(--ease);
   }
@@ -177,11 +177,28 @@
     font-family:var(--font-display); font-size:clamp(9px,1vw,12px); font-weight:700;
     letter-spacing:0.03em; color:var(--blue-dark);
   }
-  .taskbar-inv {
-    font-family:var(--font-body); font-size:clamp(8px,0.85vw,10px); font-weight:600;
-    color:var(--text-dim); display:flex; gap:12px; border-left:1.5px solid rgba(0,87,184,0.15); padding-left:12px;
+
+  /* ── Hotbar: Minecraft-style inventory slots, bottom of screen ── */
+  .hotbar {
+    position:absolute; bottom:clamp(10px,2.6vh,22px); left:50%; transform:translateX(-50%);
+    display:flex; gap:6px; z-index:14; pointer-events:none;
+    opacity:0; transition:opacity 0.4s var(--ease);
   }
-  .taskbar-inv .qty { color:var(--blue); font-weight:800; }
+  .hotbar.show { opacity:1; }
+  .hotbar-slot {
+    width:clamp(36px,6.5vw,48px); height:clamp(36px,6.5vw,48px);
+    background:rgba(22,22,30,0.6); border:2px solid rgba(255,255,255,0.2);
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.5), inset 2px 2px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.35);
+    border-radius:5px; position:relative; display:flex; align-items:center; justify-content:center;
+  }
+  .hotbar-icon { width:56%; height:68%; image-rendering:pixelated; }
+  .hotbar-icon-wheat { background:#e8b923; clip-path: polygon(50% 0%, 78% 22%, 62% 42%, 88% 58%, 68% 74%, 82% 100%, 50% 82%, 18% 100%, 32% 74%, 12% 58%, 38% 42%, 22% 22%); }
+  .hotbar-icon-milk { background:linear-gradient(#f4fbff,#cfe8f5); border:2px solid #7fa8c9; clip-path: polygon(30% 0%,70% 0%,70% 16%,92% 32%,92% 100%,8% 100%,8% 32%,30% 16%); }
+  .hotbar-count {
+    position:absolute; bottom:1px; right:3px; font-family:var(--font-display); font-weight:800;
+    font-size:clamp(9px,1.3vw,14px); color:#fff;
+    text-shadow:1px 0 0 #000,-1px 0 0 #000,0 1px 0 #000,0 -1px 0 #000;
+  }
 </style>
 </head>
 <body>
@@ -205,7 +222,11 @@
 
   <div class="taskbar" id="taskBar">
     <div class="taskbar-task" id="taskBarText">&mdash;</div>
-    <div class="taskbar-inv" id="taskBarInv"></div>
+  </div>
+
+  <div class="hotbar" id="hotbar">
+    <div class="hotbar-slot"><div class="hotbar-icon hotbar-icon-wheat"></div><div class="hotbar-count" id="hotbarWheat">0</div></div>
+    <div class="hotbar-slot"><div class="hotbar-icon hotbar-icon-milk"></div><div class="hotbar-count" id="hotbarMilk">0</div></div>
   </div>
 
   <div class="dialogue" id="dialogue">
@@ -262,7 +283,8 @@ const cinematic = $('#cinematic');
 const historyScreen = $('#historyScreen'), historyCard = $('#historyCard'), historyYear = $('#historyYear'), historyText = $('#historyText');
 const yearFlash = $('#yearFlash');
 const endFade = $('#endFade'), endFadeText = $('#endFadeText');
-const taskBar = $('#taskBar'), taskBarText = $('#taskBarText'), taskBarInv = $('#taskBarInv');
+const taskBar = $('#taskBar'), taskBarText = $('#taskBarText');
+const hotbar = $('#hotbar'), hotbarWheat = $('#hotbarWheat'), hotbarMilk = $('#hotbarMilk');
 
 // ── AMBIENT AUDIO (procedural — no external assets) ──
 let actx=null, masterGain=null, audioReady=false;
@@ -371,8 +393,9 @@ const S = {
   px:140, py:0, vx:0, vy:0, facing:1, onGround:false, jumping:false,
   animFrame:0, animTimer:0,
   currentTask:0, taskProgress:0, taskTarget:0,
-  cowFed:false, metFarmer:false, milkHold:0,
+  cowFed:false, metFarmer:false, milkHold:0, wheatHold:0, milkReady:false,
   inventory:{wheat:0, milk:0},
+  scene:'outside', sceneCooldown:0,
   camX:0, camY:0, particles:[], floatTexts:[], smoke:[], leaves:[], dust:[], keys:{}, levelComplete:false,
   time:0, villageLife:0, petCooldown:0,
 };
@@ -384,6 +407,12 @@ let wheatItems = [], cowPositions = [], chickenPositions = [], sheepPositions = 
 let deliveryHouses = [], farmCow = null, farmerNPC = null;
 let worldObjects = [];
 let villagerPositions = [];
+
+// ── BARN — a separate interior scene, entered/exited by pressing E at the door ──
+const BARN_X = 370;              // world px, center of the exterior sprite — past the wheat field, not right at spawn
+const BARN_DOOR_X = BARN_X + 14; // exterior door, offset toward the wheat field
+const ROOM_W_TILES = Math.ceil(GW/TILE); // interior fills the screen — a small, cozy, non-scrolling room
+const INTERIOR_DOOR_X = 34;      // interior px, where the door sits (left wall)
 
 function buildWorld() {
   map = Array.from({length:MAP_H}, () => Array(MAP_W).fill('.'));
@@ -399,10 +428,6 @@ function buildWorld() {
     const w = Math.sin(x*0.35) + Math.sin(x*0.12+2);
     if (w > 0.3) map[MAP_H-4][x] = 'R';
   }
-
-  for (let bx=3; bx<=9; bx++)
-    for (let by=MAP_H-9; by<=MAP_H-5; by++)
-      map[by][bx] = 'B';
 
   for (let wx=14; wx<=19; wx++)
     for (let wy=MAP_H-6; wy<=MAP_H-5; wy++)
@@ -454,15 +479,17 @@ function buildWorld() {
 
   // ── Farmstead set-pieces — a complete homestead, not just sprites on grass ──
   worldObjects.push({type:'windmill', x:1*TILE+10});
+  worldObjects.push({type:'barn', x:BARN_X});
+  worldObjects.push({type:'tree', variant:'oak', x:BARN_X+42, seed:0.9, scale:1.9}); // large tree overlapping the barn roofline
   worldObjects.push({type:'hay', x:9*TILE+15});
   worldObjects.push({type:'hay', x:9*TILE+27});
-  worldObjects.push({type:'trough', x:8*TILE+4});
+  worldObjects.push({type:'trough', x:185});
   worldObjects.push({type:'well', x:13*TILE+2});
-  worldObjects.push({type:'sign', x:20*TILE+10, label:'FARM'});
-  worldObjects.push({type:'cabbage', x:21*TILE+8});
-  worldObjects.push({type:'cabbage', x:22*TILE+4});
-  worldObjects.push({type:'carrotpatch', x:22*TILE+14});
-  worldObjects.push({type:'carrotpatch', x:23*TILE+6});
+  worldObjects.push({type:'sign', x:BARN_X+70, label:'FARM'});
+  worldObjects.push({type:'cabbage', x:BARN_X+84});
+  worldObjects.push({type:'cabbage', x:BARN_X+96});
+  worldObjects.push({type:'carrotpatch', x:BARN_X+106});
+  worldObjects.push({type:'carrotpatch', x:BARN_X+114});
   worldObjects.push({type:'shed', x:60*TILE+8});
   worldObjects.push({type:'hay', x:61*TILE+26});
   worldObjects.push({type:'sign', x:69*TILE+10, label:'VILLAGE'});
@@ -471,11 +498,12 @@ function buildWorld() {
   for (let wx=14; wx<=19; wx++)
     wheatItems.push({x:wx*TILE + TILE/2, y:(MAP_H-3)*TILE - 6, collected:false});
 
+  // cows now live inside the barn — positions are interior-room px/TILE, not outside-world coordinates
   cowPositions = [
-    {x:20, y:MAP_H-5.8, dir:1, anim:0}, {x:33, y:MAP_H-5.8, dir:-1, anim:20},
-    {x:52, y:MAP_H-5.8, dir:1, anim:40}, {x:63, y:MAP_H-5.8, dir:-1, anim:10},
+    {x:15, y:MAP_H-5.8, dir:-1, anim:0, fed:false, milked:false}, {x:19, y:MAP_H-5.8, dir:1, anim:20, fed:false, milked:false},
+    {x:23, y:MAP_H-5.8, dir:-1, anim:40, fed:false, milked:false}, {x:26.5, y:MAP_H-5.8, dir:1, anim:10, fed:false, milked:false},
   ];
-  farmCow = {x:6, y:MAP_H-5.8, dir:1, anim:0};
+  farmCow = {x:10, y:MAP_H-5.8, dir:1, anim:0, fed:false, milked:false};
   farmerNPC = {x:15.6, y:MAP_H-5.13, dir:-1, anim:0, talked:false};
 
   chickenPositions = [];
@@ -553,17 +581,19 @@ buildWorld();
 const TASK_TARGET = {1:6, 3:3, 4:2};
 const TASK_LABELS = {
   0: ()=>'Find and talk to Farmer Hashim',
-  1: ()=>`Gather wheat (${S.taskProgress}/${TASK_TARGET[1]})`,
-  2: ()=>'Feed the cow — press E (needs wheat)',
-  3: ()=>`Milk the cow — hold E (${S.taskProgress}/${TASK_TARGET[3]})`,
+  1: ()=>`Gather wheat — hold E (${S.taskProgress}/${TASK_TARGET[1]})`,
+  2: ()=>S.scene==='barn' ? 'Feed a cow — press E (needs wheat)' : 'Bring the wheat into the barn — press E at the door',
+  3: ()=>`Milk the cows — hold E, once each (${S.taskProgress}/${TASK_TARGET[3]})`,
   4: ()=>`Sell milk in the village — press E (${S.taskProgress}/${TASK_TARGET[4]})`,
 };
 function updateTaskBar() {
-  if(!S.playing || S.intro || S.levelComplete){ taskBar.classList.remove('show'); return; }
+  if(!S.playing || S.intro || S.levelComplete){ taskBar.classList.remove('show'); hotbar.classList.remove('show'); return; }
   const fn = TASK_LABELS[S.currentTask];
   taskBarText.textContent = fn ? fn() : '';
-  taskBarInv.innerHTML = `Wheat <span class="qty">${S.inventory.wheat}</span> &nbsp; Milk <span class="qty">${S.inventory.milk}</span>`;
   taskBar.classList.add('show');
+  hotbarWheat.textContent = S.inventory.wheat;
+  hotbarMilk.textContent = S.inventory.milk;
+  hotbar.classList.add('show');
 }
 
 // ── PLAYER ──
@@ -786,6 +816,46 @@ function drawSign(sx, gy, label) {
   ctx.textAlign='left';
 }
 
+function drawBarnExterior(sx, gy) {
+  groundShadow(sx, gy, 100);
+  const wallW=92, wallH=34, wallTop=gy-wallH;
+  // stone-brick lower wall, coursed brick texture
+  ctx.fillStyle='#8a8478'; ctx.fillRect(sx-wallW/2, wallTop, wallW, wallH);
+  ctx.fillStyle='#96907f'; ctx.fillRect(sx-wallW/2, wallTop, wallW, 3);
+  ctx.fillStyle='#7a7468';
+  for (let row=0; row<5; row++) {
+    const ry = wallTop+5+row*6, offset = row%2===0?0:5;
+    for (let bx=-wallW/2+offset; bx<wallW/2-2; bx+=10) ctx.fillRect(sx+bx, ry, 8, 4);
+  }
+  // gable roof — a stacked, tapering silhouette of wood shingles (not a flat block)
+  const roofBaseW=106, roofH=36, roofBaseY=wallTop+2, bands=8;
+  for (let i=0;i<bands;i++){
+    const t=i/bands, t2=(i+1)/bands;
+    const w = roofBaseW*(1-t)+16*t;
+    const y = roofBaseY - roofH*t2;
+    const h = roofH*(t2-t)+1;
+    ctx.fillStyle = i%2===0? '#6b3a28':'#78422e';
+    ctx.fillRect(sx-w/2, y, w, h);
+  }
+  ctx.fillStyle='#5a3320'; ctx.fillRect(sx-9, roofBaseY-roofH-2, 18, 4); // ridge cap
+  // chimney, poking through the left slope
+  const chimTop = roofBaseY-roofH*0.62-16;
+  ctx.fillStyle='#847e70'; ctx.fillRect(sx-31, chimTop, 10, roofBaseY-roofH*0.62-chimTop+18);
+  ctx.fillStyle='#6a6458'; ctx.fillRect(sx-31, chimTop-2, 10, 3);
+  ctx.fillStyle='#2a2620'; ctx.fillRect(sx-29, chimTop+1, 6, 4);
+  // window
+  ctx.fillStyle='#5a3f22'; ctx.fillRect(sx-27, wallTop+9, 15, 15);
+  ctx.fillStyle='#bfe0f0'; ctx.fillRect(sx-25, wallTop+11, 11, 11);
+  ctx.fillStyle='#e8f6ff'; ctx.fillRect(sx-24, wallTop+12, 4, 4);
+  ctx.fillStyle='#5a3f22'; ctx.fillRect(sx-25, wallTop+16, 11, 2); ctx.fillRect(sx-20, wallTop+11, 2, 11);
+  // door (the interactive entry point — sits at BARN_DOOR_X)
+  const doorDx = BARN_DOOR_X-BARN_X;
+  ctx.fillStyle='#3a2414'; ctx.fillRect(sx+doorDx-9, gy-23, 18, 23);
+  ctx.fillStyle='#5c3a24'; ctx.fillRect(sx+doorDx-8, gy-22, 16, 22);
+  ctx.fillStyle='#4a2f1c'; ctx.fillRect(sx+doorDx-8, gy-22, 16, 2); ctx.fillRect(sx+doorDx-1, gy-22, 2, 22);
+  ctx.fillStyle='#d8b878'; ctx.fillRect(sx+doorDx+4, gy-13, 2, 2);
+}
+
 function drawShed(sx, gy) {
   groundShadow(sx, gy, 38);
   ctx.fillStyle='#a88860'; ctx.fillRect(sx-16, gy-24, 32, 24);
@@ -862,9 +932,6 @@ function drawTile(t,sx,sy,tx,ty) {
               if((tx+ty)%6===3){ctx.fillStyle='#c0a850';ctx.fillRect(sx+10,sy+3,2,2);} break; }
     case 'F': ctx.fillStyle='#82b45a'; ctx.fillRect(sx,sy,TS,TS);
               ctx.fillStyle='#8B6914'; ctx.fillRect(sx+6,sy-6,4,22); ctx.fillRect(sx+1,sy+6,14,2); ctx.fillRect(sx+1,sy+12,14,2); break;
-    case 'B': ctx.fillStyle='#c8a878'; ctx.fillRect(sx,sy,TS,TS);
-              ctx.fillStyle='#d8b888'; if((tx+ty)%2===0)ctx.fillRect(sx+1,sy+4,TS-2,2);
-              if(ty===MAP_H-9){ctx.fillStyle='#0057B8';ctx.fillRect(sx-2,sy,TS+4,5);} break;
     case 'W': ctx.fillStyle='#8a7a20'; ctx.fillRect(sx,sy,TS,TS);
               ctx.fillStyle='#b89830';ctx.fillRect(sx+2,sy+2,2,8);ctx.fillRect(sx+8,sy+3,2,7);ctx.fillRect(sx+13,sy+1,2,9); break;
     case 'H': ctx.fillStyle='#f8f6f0'; ctx.fillRect(sx,sy,TS,TS);
@@ -989,8 +1056,10 @@ function drawWorld(cx, cy) {
     if (sx<-40 || sx>GW+40) continue;
     if (obj.type==='tree') {
       const sway = Math.sin(S.time*0.02 + obj.seed)*1.4;
-      groundShadow(sx, groundSy, 22);
-      drawTree(sx, groundSy-24, obj.variant, sway);
+      const sc = obj.scale||1;
+      groundShadow(sx, groundSy, 22*sc);
+      if (sc===1) drawTree(sx, groundSy-24, obj.variant, sway);
+      else { ctx.save(); ctx.translate(sx, groundSy-24); ctx.scale(sc,sc); drawTree(0,0,obj.variant,sway/sc); ctx.restore(); }
     }
     else if (obj.type==='bush') {
       const sway = Math.sin(S.time*0.03 + sx*0.1)*0.6;
@@ -1016,6 +1085,7 @@ function drawWorld(cx, cy) {
       drawTallGrass(sx, groundSy, sway, obj.tall);
     }
     else if (obj.type==='stream') drawStream(sx, groundSy, obj.w);
+    else if (obj.type==='barn') drawBarnExterior(sx, groundSy);
     else if (obj.type==='windmill') drawWindmill(sx, groundSy, S.time);
     else if (obj.type==='well') drawWell(sx, groundSy);
     else if (obj.type==='hay') drawHayBale(sx, groundSy);
@@ -1039,7 +1109,7 @@ function drawWorld(cx, cy) {
 
   // chimney smoke — barn + village houses, more life as tasks complete
   if (S.time % 45 === 0) {
-    spawnSmoke(6*TILE+2, (MAP_H-9)*TILE-4);
+    spawnSmoke(BARN_X-31, (MAP_H-4)*TILE-72);
     if (S.villageLife>=2) { spawnSmoke(72*TILE+16, (MAP_H-10)*TILE-4); spawnSmoke(84*TILE+16, (MAP_H-9)*TILE-4); }
   }
   updateDrawSmoke(cx, cy);
@@ -1061,10 +1131,6 @@ function drawWorld(cx, cy) {
   }
 
   const groundY = GH - MAP_H*TILE - cy;
-  for (const cow of cowPositions) {
-    cow.anim++; const sx=cow.x*TILE-cx;
-    if (sx>-30 && sx<GW+30) drawCow(sx, groundY + cow.y*TILE, cow.dir, cow.anim);
-  }
   for (const ch of chickenPositions) {
     ch.anim++; if (ch.anim%80<20) ch.peck=(ch.anim%20<5)?1:0; else ch.peck=0;
     const sx=ch.x*TILE-cx; if (sx>-10 && sx<GW+10)
@@ -1087,10 +1153,6 @@ function drawWorld(cx, cy) {
     if (vsx>-30 && vsx<GW+30) drawFarmer(vsx, groundY + v.y*TILE, v.dir, v.anim, v.pal);
   }
 
-  farmCow.anim++;
-  const fcSX = farmCow.x*TILE - cx;
-  drawCow(fcSX, groundY + farmCow.y*TILE, farmCow.dir, farmCow.anim);
-
   for (const w of wheatItems) {
     if (w.collected) continue;
     const wx=w.x-cx, wy=w.y-cy+GH-MAP_H*TILE;
@@ -1110,6 +1172,68 @@ function drawWorld(cx, cy) {
       ctx.fillStyle='#e8c090'; ctx.fillRect(sx+5, sy+1+wave, 2, 3);
     }
   }
+}
+
+// ── BARN INTERIOR — a small, cozy, non-scrolling room. Reuses the outside ground-line math
+// (GH - MAP_H*TILE) so the floor sits at the exact same screen row as the outside grass line,
+// meaning every entity's existing y-grounding still lines up correctly in here. ──
+function drawBarnInterior() {
+  const groundY = GH - MAP_H*TILE;   // same reference drawWorld uses at cy=0
+  const floorY = GH - 4*TILE;        // 206 — where wall meets floor
+
+  // dim, warm wood-plank walls
+  const wallGrad = ctx.createLinearGradient(0,0,0,floorY);
+  wallGrad.addColorStop(0,'#392a1e'); wallGrad.addColorStop(1,'#4c3627');
+  ctx.fillStyle = wallGrad; ctx.fillRect(0,0,GW,floorY);
+  for (let x=0; x<GW; x+=14) {
+    ctx.fillStyle='rgba(255,255,255,0.035)'; ctx.fillRect(x+2,0,6,floorY);
+    ctx.fillStyle='rgba(0,0,0,0.16)'; ctx.fillRect(x,0,2,floorY);
+  }
+
+  // roof beams
+  ctx.fillStyle='#241708'; ctx.fillRect(0,9,GW,7);
+  ctx.fillStyle='#1c1206'; ctx.fillRect(0,14,GW,2);
+  for (let x=16; x<GW; x+=88) { ctx.fillStyle='#2e2011'; ctx.fillRect(x,9,7,38); }
+
+  // glowing cracks — a couple of gaps in the wall letting daylight spill through
+  for (const cx0 of [148, 396]) {
+    const flick = 0.66+0.14*Math.sin(S.time*0.045+cx0);
+    const glow = ctx.createRadialGradient(cx0, floorY*0.55, 4, cx0, floorY*0.55, 74);
+    glow.addColorStop(0, `rgba(255,222,150,${0.32*flick})`); glow.addColorStop(1, 'rgba(255,222,150,0)');
+    ctx.fillStyle=glow; ctx.fillRect(cx0-74,16,148,floorY-16);
+    ctx.fillStyle=`rgba(255,240,205,${0.85*flick})`;
+    ctx.fillRect(cx0-1, 22, 2, floorY-30); ctx.fillRect(cx0+4, 70, 1, floorY-90);
+  }
+
+  // wood-plank floor
+  ctx.fillStyle='#5a4230'; ctx.fillRect(0, floorY, GW, GH-floorY);
+  ctx.fillStyle='rgba(0,0,0,0.18)'; ctx.fillRect(0, floorY, GW, 2);
+  for (let x=0; x<GW; x+=22) { ctx.fillStyle='rgba(0,0,0,0.14)'; ctx.fillRect(x, floorY, 1, GH-floorY); }
+
+  // a small puddle on the floor
+  ctx.fillStyle='#33454e'; ctx.fillRect(322, floorY+13, 28, 9);
+  ctx.fillStyle='#43606b'; ctx.fillRect(326, floorY+14, 20, 5);
+  ctx.fillStyle='rgba(255,255,255,0.22)'; ctx.fillRect(329, floorY+14, 7, 1);
+
+  // hay bales piled around
+  drawHayBale(58, floorY); drawHayBale(74, floorY); drawHayBale(452, floorY);
+
+  // interior door back outside — warm light bleeds around the frame
+  const dGlow = ctx.createRadialGradient(INTERIOR_DOOR_X, floorY-14, 2, INTERIOR_DOOR_X, floorY-14, 34);
+  dGlow.addColorStop(0,'rgba(255,228,176,0.38)'); dGlow.addColorStop(1,'rgba(255,228,176,0)');
+  ctx.fillStyle=dGlow; ctx.fillRect(INTERIOR_DOOR_X-34, floorY-48, 68, 48);
+  ctx.fillStyle='#241708'; ctx.fillRect(INTERIOR_DOOR_X-9, floorY-23, 18, 23);
+  ctx.fillStyle='#4a3020'; ctx.fillRect(INTERIOR_DOOR_X-8, floorY-22, 16, 22);
+  ctx.fillStyle='#e8d090'; ctx.fillRect(INTERIOR_DOOR_X+4, floorY-13, 2, 2);
+
+  // the whole herd lives here now
+  for (const cow of cowPositions) { cow.anim++; drawCow(cow.x*TILE, groundY + cow.y*TILE, cow.dir, cow.anim); }
+  farmCow.anim++; drawCow(farmCow.x*TILE, groundY + farmCow.y*TILE, farmCow.dir, farmCow.anim);
+
+  // soft vignette — dim corners, warm middle
+  const vig = ctx.createRadialGradient(GW/2, floorY*0.55, 50, GW/2, floorY*0.55, 340);
+  vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(0,0,0,0.38)');
+  ctx.fillStyle=vig; ctx.fillRect(0,0,GW,GH);
 }
 
 // ── SMOKE / LEAVES (lightweight, generic drift particles) ──
@@ -1224,17 +1348,14 @@ function completeTask(idx) {
   }
   else if(idx===1){
     S.villageLife=2;
-    showDialogue(['Good, good — that’s plenty wheat. Now go feed her by the barn — press E when you\'re close.'],'Farmer Hashim',()=>{S.currentTask=2;updateTaskBar();});
+    showDialogue(['Good, good — that’s plenty wheat. The cows are waiting in the barn — press E at the door to go in, then feed one.'],'Farmer Hashim',()=>{S.currentTask=2;updateTaskBar();});
   }
   else if(idx===2){
-    showStoryPanel('2003','A Partnership Is Born','In Istog, a small town in western Kosovo, Devolli Group signs a historic agreement with Tetra Pak of Sweden.<br><br>For the first time, UHT technology — ultra-high temperature processing — will come to Kosovo.<br><br>But before the factory walls go up, before the machines arrive... the real foundation is being laid by farmers just like this one.',
-      ()=>{
-        S.villageLife=3; S.currentTask=3; S.taskProgress=0; S.taskTarget=TASK_TARGET[3];
-        showDialogue(['She\'s ready now. Walk up to her and hold E to milk her — gently, mind you.'],'Farmer Hashim',()=>{cowReady=true;updateTaskBar();});
-      });
+    S.villageLife=3; S.currentTask=3; S.taskProgress=0; S.taskTarget=TASK_TARGET[3];
+    showDialogue(['Good — she\'s got her feed. Now walk up to any cow and hold E to milk her. Each one only gives once, so you\'ll need to visit a few.'],'Farmer Hashim',()=>{S.milkReady=true;updateTaskBar();});
   }
   else if(idx===3){
-    showDialogue(['There we go. Fresh, warm milk — nature’s gift. Carry the bottles into the village and press E to sell them.'],'Farmer Hashim',()=>{S.currentTask=4;S.taskProgress=0;S.taskTarget=TASK_TARGET[4];updateTaskBar();});
+    showDialogue(['There we go. Fresh, warm milk — nature’s gift. Head back out through the door and carry the bottles into the village — press E to sell them.'],'Farmer Hashim',()=>{S.currentTask=4;S.taskProgress=0;S.taskTarget=TASK_TARGET[4];updateTaskBar();});
   }
   else if(idx===4){
     S.villageLife=4;
@@ -1299,7 +1420,7 @@ function drawWagon(x,y){
 }
 
 // ── UPDATE ──
-let cowReady=false;
+function allCows(){ return [farmCow, ...cowPositions]; }
 function update() {
   const p=S; if(p.dialogue||p.intro||p.levelComplete)return;
   p.time++;
@@ -1310,7 +1431,8 @@ function update() {
   if((p.keys.ArrowUp||p.keys[' '])&&p.onGround&&!p.jumping){p.vy=JUMP;p.onGround=false;p.jumping=true;}
   if(!p.keys[' ']&&!p.keys.ArrowUp)p.jumping=false;
   p.vy+=GRAVITY; p.px+=p.vx; p.py+=p.vy;
-  p.px=Math.max(0,Math.min(MAP_W*TILE-PW,p.px));
+  const worldWTiles = p.scene==='barn' ? ROOM_W_TILES : MAP_W;
+  p.px=Math.max(0,Math.min(worldWTiles*TILE-PW,p.px));
 
   const groundY=(MAP_H-4)*TILE-PH;
   if(p.py>=groundY){p.py=groundY;p.vy=0;p.onGround=true;}
@@ -1323,47 +1445,80 @@ function update() {
     }
   } else p.animFrame=0;
 
-  p.camX=p.px-GW/2+PW/2; p.camX=Math.max(0,Math.min(MAP_W*TILE-GW,p.camX));
+  p.camX=p.px-GW/2+PW/2; p.camX=Math.max(0,Math.min(worldWTiles*TILE-GW,p.camX));
   p.camY=Math.min(0,p.py-GH/2);
 
+  if(p.sceneCooldown>0) p.sceneCooldown--;
+
+  // barn door — press E to step inside / step back out
+  if(p.scene==='outside' && p.sceneCooldown<=0){
+    const near = Math.abs(p.px+PW/2-BARN_DOOR_X)<16 && p.onGround;
+    if(near && p.keys['e']){
+      p.keys['e']=false; p.keys['E']=false;
+      p.scene='barn'; p.px=INTERIOR_DOOR_X+18; p.py=groundY; p.vy=0; p.sceneCooldown=20;
+      updateTaskBar();
+    }
+  } else if(p.scene==='barn' && p.sceneCooldown<=0){
+    const near = Math.abs(p.px+PW/2-INTERIOR_DOOR_X)<16 && p.onGround;
+    if(near && p.keys['e']){
+      p.keys['e']=false; p.keys['E']=false;
+      p.scene='outside'; p.px=BARN_DOOR_X-7; p.py=groundY; p.vy=0; p.sceneCooldown=20;
+      updateTaskBar();
+    }
+  }
+
   // meet the farmer — approaching him starts the story naturally
-  if(p.currentTask===0 && !farmerNPC.talked){
+  if(p.scene==='outside' && p.currentTask===0 && !farmerNPC.talked){
     const dx=Math.abs(p.px+PW/2-(farmerNPC.x*TILE+8)), dy=Math.abs(p.py+PH/2-(farmerNPC.y*TILE+8));
     if(dx<28 && dy<32){ farmerNPC.talked=true; completeTask(0); }
   }
-  // wheat — auto-picked up on touch, goes into inventory
-  if(p.currentTask===1){for(const w of wheatItems){if(w.collected)continue;if(Math.abs(p.px+PW/2-w.x)<10&&Math.abs(p.py+PH/2-w.y)<22){w.collected=true;p.taskProgress++;p.inventory.wheat++;spawnParticles(w.x,w.y,'rgba(255,215,0,1)',10);spawnFloatText(w.x,w.y-16,'+1 wheat');pickupSound();updateTaskBar();if(p.taskProgress>=TASK_TARGET[1])completeTask(1);}}}
-  // feed cow — press E, consumes the wheat you're carrying
-  if(p.currentTask===2){
-    const cx=farmCow.x*TILE+TILE/2, cy=farmCow.y*TILE+TILE/2;
-    const near = Math.abs(p.px+PW/2-cx)<28 && Math.abs(p.py+PH/2-cy)<28;
-    if(near && p.keys['e'] && !p.cowFed){
+  // wheat — hold E next to a stalk; a ring fills (quicker than milking), then it's added to the inventory
+  if(p.scene==='outside' && p.currentTask===1){
+    const w = wheatItems.find(w=>!w.collected && Math.abs(p.px+PW/2-w.x)<12 && Math.abs(p.py+PH/2-w.y)<24);
+    if(w && p.keys['e']){
+      p.wheatHold++;
+      if(p.wheatHold>=18){
+        p.wheatHold=0; w.collected=true; p.taskProgress++; p.inventory.wheat++;
+        spawnParticles(w.x,w.y,'rgba(255,215,0,1)',10); spawnFloatText(w.x,w.y-16,'+1 wheat'); pickupSound(); updateTaskBar();
+        if(p.taskProgress>=TASK_TARGET[1]) completeTask(1);
+      }
+    } else p.wheatHold=0;
+  } else p.wheatHold=0;
+  // feed a cow — inside the barn, press E next to any unfed cow, consumes 1 wheat from the inventory
+  if(p.scene==='barn' && p.currentTask===2){
+    const cow = allCows().find(c=>!c.fed && Math.abs(p.px+PW/2-(c.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(c.y*TILE+TILE/2))<28);
+    if(cow && p.keys['e']){
       p.keys['e']=false; p.keys['E']=false;
+      const cx=cow.x*TILE+TILE/2, cy=cow.y*TILE+TILE/2;
       if(p.inventory.wheat>0){
-        p.cowFed=true; p.taskProgress++; p.inventory.wheat=0;
-        spawnParticles(cx,cy,'rgba(100,200,100,1)',18); cowbellSound(); updateTaskBar();
-        showDialogue(['There you go, girl. Eat up. Fresh milk will come soon.'],'Farmer Hashim',()=>{completeTask(2);});
+        cow.fed=true; p.inventory.wheat--;
+        spawnParticles(cx,cy,'rgba(100,200,100,1)',18); spawnFloatText(cx,cy-20,'-1 wheat','#ffe08a'); cowbellSound(); updateTaskBar();
+        if(!p.cowFed){
+          p.cowFed=true; p.taskProgress++;
+          showDialogue(['There you go — eat up. Fresh milk will come soon.'],'Farmer Hashim',()=>{completeTask(2);});
+        }
       } else {
-        showDialogue(["I don't have any wheat to feed her yet — better go gather some."],'You',()=>{});
+        showDialogue(["I don't have any wheat to feed her yet — better go gather some outside."],'You',()=>{});
       }
     }
   }
-  // milk — hold E next to the cow; a bottle drops into the inventory every so often
-  if(p.currentTask===3 && cowReady){
-    const cx=farmCow.x*TILE+TILE/2, cy=farmCow.y*TILE+TILE/2;
-    const near = Math.abs(p.px+PW/2-cx)<28 && Math.abs(p.py+PH/2-cy)<28;
-    if(near && p.keys['e']){
+  // milk — inside the barn, hold E next to any un-milked cow; a ring fills, then a bottle drops into the inventory.
+  // Each cow only gives milk once — move on to a different one after.
+  if(p.scene==='barn' && p.currentTask===3 && p.milkReady){
+    const cow = allCows().find(c=>!c.milked && Math.abs(p.px+PW/2-(c.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(c.y*TILE+TILE/2))<28);
+    if(cow && p.keys['e']){
       p.milkHold++;
       if(p.milkHold>=35){
-        p.milkHold=0; p.taskProgress++; p.inventory.milk++;
+        p.milkHold=0; cow.milked=true; p.taskProgress++; p.inventory.milk++;
+        const cx=cow.x*TILE+TILE/2, cy=cow.y*TILE+TILE/2;
         spawnParticles(cx,cy+20,'rgba(255,255,255,1)',12); spawnFloatText(cx,cy-4,'+1 milk','#d8f0ff'); milkSound(); updateTaskBar();
-        if(p.taskProgress>=TASK_TARGET[3]){cowReady=false;completeTask(3);}
+        if(p.taskProgress>=TASK_TARGET[3]) completeTask(3);
       }
     } else p.milkHold=0;
   } else p.milkHold=0;
-  // sell — press E at a village house door, consumes a bottle from the inventory
+  // sell — outside, press E at a village house door, consumes a bottle from the inventory
   // (h.y is the house's roofline, used for the decorative wave sprite — the door trigger sits at ground level instead)
-  if(p.currentTask===4){
+  if(p.scene==='outside' && p.currentTask===4){
     for(const h of deliveryHouses){
       const hx=h.x*TILE+TILE, hy=(MAP_H-6)*TILE;
       const near = Math.abs(p.px+PW/2-hx)<22 && Math.abs(p.py+PH/2-hy)<26;
@@ -1381,18 +1536,20 @@ function update() {
     }
   }
 
-  // petting non-task animals — pure delight, no progression
+  // petting non-task animals — pure delight, no progression. Sheep/chickens outside.
+  // Barn cows only join the pettable pool once fully milked — otherwise this steals the E hold from feed/milk every frame.
   if(p.petCooldown>0) p.petCooldown--;
-  if(p.keys.Enter && p.petCooldown<=0){
-    const near = [...cowPositions,...sheepPositions,...chickenPositions].find(a=>{
+  if(p.keys['e'] && p.petCooldown<=0){
+    const pool = p.scene==='barn' ? allCows().filter(c=>c.milked) : [...sheepPositions,...chickenPositions];
+    const near = pool.find(a=>{
       const ax=a.x*TILE+8, ay=a.y*TILE+8;
       return Math.abs(p.px+PW/2-ax)<20 && Math.abs(p.py+PH/2-ay)<20;
     });
-    if(near){ p.petCooldown=30; p.keys.Enter=false; spawnParticles(near.x*TILE+8,near.y*TILE,'rgba(255,140,180,1)',8); petSound(); }
+    if(near){ p.petCooldown=30; p.keys['e']=false; p.keys['E']=false; spawnParticles(near.x*TILE+8,near.y*TILE,'rgba(255,140,180,1)',8); petSound(); }
   }
 
-  // villager small-talk — press E near a villager to greet them
-  if(p.keys['e']){
+  // villager small-talk — outside, press E near a villager to greet them
+  if(p.scene==='outside' && p.keys['e']){
     const v = villagerPositions.find(v=>{
       const vx=v.x*TILE+8, vy=v.y*TILE+8;
       return Math.abs(p.px+PW/2-vx)<24 && Math.abs(p.py+PH/2-vy)<28;
@@ -1413,32 +1570,50 @@ function drawPrompt(wx, wy, label) {
   ctx.fillText(label, sx, sy);
   ctx.textAlign='left';
 }
-function drawHoldBar(wx, wy, frac) {
-  const sx = wx-S.camX, sy = wy-S.camY+GH-MAP_H*TILE-34;
-  ctx.fillStyle='rgba(18,58,111,0.6)'; ctx.fillRect(sx-13,sy,26,5);
-  ctx.fillStyle='#d8f0ff'; ctx.fillRect(sx-11,sy+1,Math.max(0,22*frac),3);
+function drawHoldRing(wx, wy, frac) {
+  const sx = wx-S.camX, sy = wy-S.camY+GH-MAP_H*TILE-54, r=9;
+  ctx.lineWidth=3; ctx.lineCap='round';
+  ctx.strokeStyle='rgba(18,58,111,0.45)';
+  ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle='#d8f0ff';
+  ctx.beginPath(); ctx.arc(sx,sy,r,-Math.PI/2,-Math.PI/2+frac*Math.PI*2); ctx.stroke();
+  ctx.lineWidth=1; ctx.lineCap='butt';
 }
 function drawPrompts(){
   if(S.dialogue||S.intro||S.levelComplete) return;
   const p=S;
-  if(p.currentTask===2 && !p.cowFed){
-    const cx=farmCow.x*TILE+TILE/2, cy=farmCow.y*TILE+TILE/2;
-    if(Math.abs(p.px+PW/2-cx)<28&&Math.abs(p.py+PH/2-cy)<28) drawPrompt(cx,cy-10,'E');
+  if(p.scene==='outside' && p.sceneCooldown<=0){
+    if(Math.abs(p.px+PW/2-BARN_DOOR_X)<16) drawPrompt(BARN_DOOR_X,(MAP_H-4)*TILE-30,'E');
   }
-  if(p.currentTask===3 && cowReady){
-    const cx=farmCow.x*TILE+TILE/2, cy=farmCow.y*TILE+TILE/2;
-    if(Math.abs(p.px+PW/2-cx)<28&&Math.abs(p.py+PH/2-cy)<28){
-      drawPrompt(cx,cy-10,'HOLD E');
-      if(p.milkHold>0) drawHoldBar(cx,cy,p.milkHold/35);
+  if(p.scene==='barn' && p.sceneCooldown<=0){
+    if(Math.abs(p.px+PW/2-INTERIOR_DOOR_X)<16) drawPrompt(INTERIOR_DOOR_X,(MAP_H-4)*TILE-30,'E');
+  }
+  if(p.scene==='outside' && p.currentTask===1){
+    const w = wheatItems.find(w=>!w.collected && Math.abs(p.px+PW/2-w.x)<12 && Math.abs(p.py+PH/2-w.y)<24);
+    if(w){
+      drawPrompt(w.x,w.y-14,'HOLD E');
+      if(p.wheatHold>0) drawHoldRing(w.x,w.y+2,p.wheatHold/18);
     }
   }
-  if(p.currentTask===4){
+  if(p.scene==='barn' && p.currentTask===2){
+    const cow = allCows().find(c=>!c.fed && Math.abs(p.px+PW/2-(c.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(c.y*TILE+TILE/2))<28);
+    if(cow) drawPrompt(cow.x*TILE+TILE/2,cow.y*TILE+TILE/2-10,'E');
+  }
+  if(p.scene==='barn' && p.currentTask===3 && p.milkReady){
+    const cow = allCows().find(c=>!c.milked && Math.abs(p.px+PW/2-(c.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(c.y*TILE+TILE/2))<28);
+    if(cow){
+      const cx=cow.x*TILE+TILE/2, cy=cow.y*TILE+TILE/2;
+      drawPrompt(cx,cy-10,'HOLD E');
+      if(p.milkHold>0) drawHoldRing(cx,cy,p.milkHold/35);
+    }
+  }
+  if(p.scene==='outside' && p.currentTask===4){
     for(const h of deliveryHouses){
       const hx=h.x*TILE+TILE, hy=(MAP_H-6)*TILE;
       if(Math.abs(p.px+PW/2-hx)<22&&Math.abs(p.py+PH/2-hy)<26) drawPrompt(hx,hy-10,'E');
     }
   }
-  for(const v of villagerPositions){
+  if(p.scene==='outside') for(const v of villagerPositions){
     const vx=v.x*TILE+8, vy=v.y*TILE+8;
     if(Math.abs(p.px+PW/2-vx)<24&&Math.abs(p.py+PH/2-vy)<28) drawPrompt(vx,vy-16,'E');
   }
@@ -1450,14 +1625,16 @@ function render() {
   if(ending){ renderEnding(); updateParticles(); requestAnimationFrame(render); return; }
 
   ctx.clearRect(0,0,GW,GH);
-  drawWorld(S.camX,S.camY);
+  if (S.scene==='barn') drawBarnInterior(); else drawWorld(S.camX,S.camY);
   drawPlayer(S.px-S.camX, S.py-S.camY+GH-MAP_H*TILE);
   drawPrompts();
   drawParticles();
 
-  const birdX=((S.time*0.3)%(GW+60))-30, birdY=25+Math.sin(S.time*0.02)*8;
-  ctx.fillStyle='#333'; ctx.fillRect(birdX,birdY,4,2); ctx.fillRect(birdX-2,birdY+1,3,1);
-  if((S.time+90)%180<90){const b2X=((S.time*0.25+100)%(GW+60))-30;ctx.fillRect(b2X,birdY+10,4,2);}
+  if (S.scene==='outside') {
+    const birdX=((S.time*0.3)%(GW+60))-30, birdY=25+Math.sin(S.time*0.02)*8;
+    ctx.fillStyle='#333'; ctx.fillRect(birdX,birdY,4,2); ctx.fillRect(birdX-2,birdY+1,3,1);
+    if((S.time+90)%180<90){const b2X=((S.time*0.25+100)%(GW+60))-30;ctx.fillRect(b2X,birdY+10,4,2);}
+  }
 
   requestAnimationFrame(render);
 }
@@ -1528,8 +1705,9 @@ function initGame() {
   S.px=140; S.py=(MAP_H-4)*TILE-PH; S.vx=0; S.vy=0; S.facing=1; S.onGround=true;
   S.animFrame=0; S.animTimer=0; S.jumping=false;
   S.currentTask=0; S.taskProgress=0; S.taskTarget=0;
-  S.cowFed=false; cowReady=false; S.milkHold=0;
+  S.cowFed=false; S.milkReady=false; S.milkHold=0; S.wheatHold=0;
   S.inventory={wheat:0, milk:0};
+  S.scene='outside'; S.sceneCooldown=0;
   S.choiceOptions=null; diaChoices.classList.remove('active');
   S.particles=[]; S.floatTexts=[]; S.smoke=[]; S.leaves=[]; S.dust=[];
   S.camX=0; S.camY=0;
@@ -1576,9 +1754,9 @@ window.addEventListener('touchstart',e=>{e.preventDefault();
   const t=e.touches[0],rect=canvas.getBoundingClientRect();
   const rx=(t.clientX-rect.left)/rect.width*GW,ry=(t.clientY-rect.top)/rect.height*GH;
   if(rx<GW/3)S.keys.ArrowLeft=true;else if(rx>GW*2/3)S.keys.ArrowRight=true;
-  if(ry<GH*0.4)S.keys[' ']=true;if(ry>GH*0.7)S.keys.Enter=true;});
+  if(ry<GH*0.4)S.keys[' ']=true;if(ry>GH*0.7){S.keys.Enter=true;S.keys['e']=true;S.keys['E']=true;}});
 
-window.addEventListener('touchend',e=>{e.preventDefault();S.keys.ArrowLeft=false;S.keys.ArrowRight=false;S.keys[' ']=false;S.keys.Enter=false;});
+window.addEventListener('touchend',e=>{e.preventDefault();S.keys.ArrowLeft=false;S.keys.ArrowRight=false;S.keys[' ']=false;S.keys.Enter=false;S.keys['e']=false;S.keys['E']=false;});
 
 // ── GAME LOOP ──
 initGame();
