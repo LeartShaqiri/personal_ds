@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+1<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -64,67 +64,6 @@
     background:#000; opacity:0; pointer-events:none; transition:opacity 0.5s ease;
   }
   .year-flash.show { opacity:1; }
-
-  /* ── Story interludes (historical facts) + ending recap ── */
-  .cinematic {
-    position:absolute; inset:0; display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    background:linear-gradient(160deg,#fff 0%,var(--blue-light) 50%,#dcecf8 100%);
-    z-index:20; gap:14px; padding:clamp(24px,6vh,48px);
-    transition:opacity 0.6s var(--ease);
-  }
-  .cinematic.hidden { opacity:0; pointer-events:none; }
-
-  .cin-logo {
-    font-family:var(--font-display); font-size:clamp(11px,1.4vw,15px);
-    font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
-    color:var(--blue); margin-bottom:6px;
-  }
-  .cin-year {
-    font-family:var(--font-display); font-size:clamp(56px,8vw,90px);
-    font-weight:800; letter-spacing:-0.03em; line-height:1;
-    color:var(--blue); animation:yearPulse 3s var(--ease) infinite;
-  }
-  @keyframes yearPulse {
-    0%,100% { transform:scale(1); color:var(--blue); }
-    50% { transform:scale(1.04); color:var(--blue-dark); }
-  }
-  .cin-title {
-    font-family:var(--font-display); font-size:clamp(14px,1.8vw,20px);
-    font-weight:600; letter-spacing:0.15em; text-transform:uppercase;
-    color:var(--blue-dark); text-align:center;
-  }
-  .cin-divider { width:48px; height:2px; background:var(--blue); border-radius:1px; margin:2px 0; }
-  .cin-story {
-    font-family:var(--font-body); font-size:clamp(11px,1.3vw,14px); font-weight:400;
-    color:var(--text-dim); text-align:center; line-height:1.9; max-width:560px;
-  }
-  .cin-btn {
-    font-family:var(--font-body); font-size:clamp(10px,1.1vw,13px); font-weight:600;
-    letter-spacing:0.04em; text-transform:uppercase;
-    color:var(--white); background:var(--blue); border:none;
-    border-radius:100px; padding:12px 36px; cursor:pointer;
-    pointer-events:auto; transition:all 0.35s var(--ease); margin-top:6px;
-  }
-  .cin-btn:hover { background:var(--blue-dark); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,87,184,0.25); }
-  .cin-sub {
-    font-family:var(--font-body); font-size:clamp(8px,0.9vw,11px); font-weight:500;
-    letter-spacing:0.15em; text-transform:uppercase; color:var(--text-dim);
-  }
-
-  /* ── End-of-level fade to black + title card ── */
-  .end-fade {
-    position:absolute; inset:0; z-index:18; background:#000; opacity:0;
-    transition:opacity 1.8s var(--ease); pointer-events:none;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .end-fade.on { opacity:1; }
-  .end-fade-text {
-    font-family:var(--font-display); font-size:clamp(20px,3vw,34px); font-weight:600;
-    letter-spacing:0.08em; color:#fff; opacity:0; transition:opacity 1.6s var(--ease) 0.6s;
-    text-align:center;
-  }
-  .end-fade.on .end-fade-text { opacity:1; }
 
   .dialogue {
     position:absolute; bottom:clamp(12px,2.5vh,24px); left:50%;
@@ -218,10 +157,6 @@
 
   <div class="year-flash" id="yearFlash">2003</div>
 
-  <div class="cinematic hidden" id="cinematic"></div>
-
-  <div class="end-fade" id="endFade"><div class="end-fade-text" id="endFadeText">The Journey Begins&hellip;</div></div>
-
   <div class="taskbar" id="taskBar">
     <div class="taskbar-task" id="taskBarText">&mdash;</div>
   </div>
@@ -282,10 +217,8 @@ function tryFullscreen(){
 const $ = s => document.querySelector(s);
 const diaBox = $('#dialogue'), diaText = $('#dialogueText'), diaName = $('#dialogueName');
 const diaChoices = $('#dialogueChoices'), diaContinue = $('#dialogueContinue');
-const cinematic = $('#cinematic');
 const historyScreen = $('#historyScreen'), historyCard = $('#historyCard'), historyYear = $('#historyYear'), historyText = $('#historyText');
 const yearFlash = $('#yearFlash');
-const endFade = $('#endFade'), endFadeText = $('#endFadeText');
 const taskBar = $('#taskBar'), taskBarText = $('#taskBarText');
 const hotbar = $('#hotbar'), hotbarWheat = $('#hotbarWheat'), hotbarMilk = $('#hotbarMilk'), hotbarMoney = $('#hotbarMoney');
 const hotbarSlotWheat = $('#hotbarSlotWheat'), hotbarSlotMilk = $('#hotbarSlotMilk'), hotbarSlotMoney = $('#hotbarSlotMoney');
@@ -1346,13 +1279,6 @@ function confirmChoice(idx) {
   showDialogue(opt.response, speaker, ()=>{});
 }
 
-// ── STORY PANELS (historical interludes) ──
-function showStoryPanel(year,title,text,cb) {
-  cinematic.classList.remove('hidden'); S.playing=false;
-  cinematic.innerHTML=`<div class="cin-logo">QUMËSHTORJA VITA</div><div class="cin-year" style="font-size:clamp(42px,6vw,72px)">${year}</div><div class="cin-title">${title}</div><div class="cin-divider"></div><div class="cin-story">${text}</div><button class="cin-btn" id="sb">Continue</button>`;
-  document.getElementById('sb').onclick=()=>{cinematic.classList.add('hidden');S.playing=true;cb();};
-}
-
 // ── TASK COMPLETION ──
 function completeTask(idx) {
   spawnParticles(S.px,S.py,'rgba(255,215,0,1)',25);
@@ -1373,72 +1299,18 @@ function completeTask(idx) {
     showDialogue(['Good — she\'s got her feed. Now walk up to any cow and hold E to milk her. Each one only gives once, so you\'ll need to visit a few.'],'Farmer Hashim',()=>{S.milkReady=true;updateTaskBar();});
   }
   else if(idx===3){
-    showStoryPanel('Sundown','The Herd Is Tended','The last cow has given her milk, and the sun dips low over the hills of Istog. Time to carry it into the village before the light is gone.',()=>{
-      showDialogue(['There we go. Fresh, warm milk — nature’s gift. Head back out through the door — some folks in the village need milk tonight. Look for the ones with a mark over their head.'],'Farmer Hashim',()=>{
-        S.currentTask=4;S.taskProgress=0;S.taskTarget=TASK_TARGET[4];assignMilkBuyers();updateTaskBar();
-      });
+    showDialogue(['That\'s good for now — let\'s see if I can sell more than yesterday.'],'You',()=>{
+      S.currentTask=4;S.taskProgress=0;S.taskTarget=TASK_TARGET[4];assignMilkBuyers();updateTaskBar();
     });
   }
   else if(idx===4){
     S.villageLife=4;
     S.levelComplete=true;
     updateTaskBar();
-    startEnding();
+    yearFlash.textContent='';
+    yearFlash.classList.add('show');
+    setTimeout(()=>{ window.location.href='2.html'; }, 1500);
   }
-}
-
-// ── ENDING CUTSCENE ──
-let ending=null;
-function startEnding(){
-  ending = {phase:'rise', t:0, wagonX:20*TILE};
-}
-function updateEnding(){
-  if(!ending) return;
-  ending.t++;
-  if(ending.phase==='rise' && ending.t>90){ ending.phase='wagon'; ending.t=0; }
-  else if(ending.phase==='wagon'){
-    ending.wagonX += 0.9;
-    if(ending.wagonX > 96*TILE){ ending.phase='fade'; ending.t=0; }
-  }
-  else if(ending.phase==='fade' && ending.t===1){
-    endFade.classList.add('on');
-  }
-  else if(ending.phase==='fade' && ending.t>150){
-    ending.phase='panel'; ending.t=0;
-    endFade.classList.remove('on');
-    showStoryPanel('2003','The Foundation Is Laid','From farmers like this one, from thousands of families across Kosovo\'s highlands, VITA was born.<br><br>Devolli Group\'s vision — combined with Tetra Pak\'s technology — would soon transform these humble milk deliveries into the largest dairy in the Balkans.<br><br>280 employees. 1,500+ farmers. One promise: Fresh from nature. Trusted every day.<br><br><span style="color:var(--blue);font-weight:700">Level 1 Complete</span><br><span style="font-size:11px;color:var(--text-dim)">VITA — Burim i jetës</span>',
-      ()=>{
-        cinematic.classList.remove('hidden');
-        cinematic.innerHTML=`<div class="cin-logo">QUMËSHTORJA VITA</div><div class="cin-year" style="font-size:clamp(34px,5vw,52px)">VITA</div><div class="cin-title">Chapter One Complete</div><div class="cin-divider"></div><div class="cin-story" style="color:var(--blue-dark);font-weight:500">"VITA është qumështi i parë, në Kosovë, i përpunuar me teknologjinë më moderne UHT."<br><br><span style="color:var(--text-dim)">— Me ty u rrita —</span><br><br>Milk sold: ${S.taskTarget} · Earned: $${S.money}</div><button class="cin-btn" id="toCh2">Continue to 2010</button>`;
-        document.getElementById('toCh2').onclick=()=>{ window.location.href='2.html'; };
-        ending=null;
-      });
-  }
-}
-function renderEnding(){
-  if(!ending) return;
-  const riseAmt = ending.phase==='rise' ? Math.min(1, ending.t/90) : 1;
-  const camY = -riseAmt*70;
-  const camX = Math.max(0, Math.min(MAP_W*TILE-GW, ending.wagonX - GW/2));
-  ctx.clearRect(0,0,GW,GH);
-  drawWorld(camX, camY);
-  if(ending.phase==='wagon' || ending.phase==='fade'){
-    const groundY = GH - MAP_H*TILE - camY;
-    const wx = ending.wagonX - camX;
-    const wy = groundY + (MAP_H-4)*TILE - 16;
-    drawWagon(wx, wy);
-  }
-  drawParticles();
-}
-function drawWagon(x,y){
-  ctx.fillStyle='#6B4226'; ctx.fillRect(x-10,y-6,24,10);
-  ctx.fillStyle='#8B5A2E'; ctx.fillRect(x-10,y-9,24,3);
-  ctx.fillStyle='#2a2a2a'; ctx.fillRect(x-8,y+3,6,6); ctx.fillRect(x+6,y+3,6,6);
-  ctx.fillStyle='#555'; ctx.fillRect(x-6,y+5,2,2); ctx.fillRect(x+8,y+5,2,2);
-  // milk can
-  ctx.fillStyle='#d8dde2'; ctx.fillRect(x-3,y-16,10,9);
-  ctx.fillStyle='#0057B8'; ctx.fillRect(x-3,y-13,10,2);
-  ctx.fillStyle='#eef3f7'; ctx.fillRect(x-1,y-15,3,3);
 }
 
 // ── UPDATE ──
@@ -1645,7 +1517,6 @@ function drawPrompts(){
 // ── RENDER ──
 function render() {
   if(S.intro){ renderHistoryBg(); requestAnimationFrame(render); return; }
-  if(ending){ renderEnding(); updateParticles(); requestAnimationFrame(render); return; }
 
   ctx.clearRect(0,0,GW,GH);
   if (S.scene==='barn') drawBarnInterior(); else drawWorld(S.camX,S.camY);

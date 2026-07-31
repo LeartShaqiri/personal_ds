@@ -15,53 +15,1206 @@
   * { margin:0; padding:0; box-sizing:border-box; }
 
   body {
-    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:14px; text-align:center; padding:clamp(24px,6vh,48px);
-    font-family:var(--font-body);
-    background:linear-gradient(160deg,#fff 0%,var(--blue-light) 50%,#dcecf8 100%);
+    background:#000; display:flex; align-items:center; justify-content:center;
+    min-height:100vh; font-family:var(--font-body); overflow:hidden;
+    cursor:none;
   }
 
-  .logo {
+  #container { position:relative; background:#000; }
+
+  canvas { display:block; image-rendering:pixelated; image-rendering:crisp-edges; }
+
+  .year-flash {
+    position:absolute; inset:0; z-index:40; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:800; font-size:clamp(64px,13vw,140px); color:#fff;
+    background:#000; opacity:0; pointer-events:none; transition:opacity 0.5s ease;
+  }
+  .year-flash.show { opacity:1; }
+
+  .dialogue {
+    position:absolute; bottom:clamp(12px,2.5vh,24px); left:50%;
+    transform:translateX(-50%);
+    background:rgba(255,255,255,0.94); backdrop-filter:blur(12px);
+    border:1.5px solid rgba(0,87,184,0.15); border-radius:16px;
+    padding:16px 24px; z-index:15; pointer-events:auto;
+    width:82%; max-width:640px; display:none;
+    box-shadow:0 8px 32px rgba(0,87,184,0.08);
+  }
+  .dialogue.active { display:block; }
+  .dialogue-name {
+    font-family:var(--font-display); font-size:clamp(9px,0.85vw,11px); font-weight:700;
+    letter-spacing:0.14em; text-transform:uppercase; color:var(--blue); margin-bottom:4px;
+  }
+  .dialogue-text {
+    font-family:var(--font-body); font-size:clamp(11px,1.2vw,14px); font-weight:500;
+    color:var(--text); line-height:1.8; margin-bottom:8px;
+  }
+  .dialogue-continue {
+    font-family:var(--font-body); font-size:clamp(8px,0.8vw,10px); font-weight:600;
+    letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--blue); text-align:right;
+    animation:blink 1.2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+  .dialogue-choices { display:none; margin-top:2px; }
+  .dialogue-choices.active { display:block; }
+  .dialogue-choice {
+    font-family:var(--font-body); font-size:clamp(10px,1.1vw,13px); font-weight:500;
+    color:var(--text-dim); padding:5px 8px; border-radius:8px; margin-top:2px;
+    transition:background 0.15s var(--ease), color 0.15s var(--ease);
+  }
+  .dialogue-choice.sel { background:rgba(0,87,184,0.10); color:var(--blue-dark); font-weight:700; }
+
+  .taskbar {
+    position:absolute; top:clamp(10px,2.2vh,20px); left:50%; transform:translateX(-50%);
+    background:rgba(255,255,255,0.92); backdrop-filter:blur(10px);
+    border:1.5px solid rgba(0,87,184,0.15); border-radius:100px;
+    padding:8px 20px; z-index:14; pointer-events:none;
+    white-space:nowrap;
+    box-shadow:0 6px 20px rgba(0,87,184,0.10);
+    opacity:0; transition:opacity 0.4s var(--ease);
+  }
+  .taskbar.show { opacity:1; }
+  .taskbar-task {
+    font-family:var(--font-display); font-size:clamp(9px,1vw,12px); font-weight:700;
+    letter-spacing:0.03em; color:var(--blue-dark);
+  }
+
+  .hotbar {
+    position:absolute; bottom:clamp(10px,2.6vh,22px); left:50%; transform:translateX(-50%);
+    display:flex; gap:6px; z-index:14; pointer-events:none;
+    opacity:0; transition:opacity 0.4s var(--ease);
+  }
+  .hotbar.show { opacity:1; }
+  .hotbar-slot {
+    width:clamp(36px,6.5vw,48px); height:clamp(36px,6.5vw,48px);
+    background:rgba(22,22,30,0.6); border:2px solid rgba(255,255,255,0.2);
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.5), inset 2px 2px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.35);
+    border-radius:5px; position:relative; display:flex; align-items:center; justify-content:center;
+  }
+  .hotbar-icon { width:56%; height:68%; image-rendering:pixelated; }
+  .hotbar-icon-milk { background:linear-gradient(#f4fbff,#cfe8f5); border:2px solid #7fa8c9; clip-path: polygon(30% 0%,70% 0%,70% 16%,92% 32%,92% 100%,8% 100%,8% 32%,30% 16%); }
+  .hotbar-icon-package { background:linear-gradient(#6a9fd8,#3a6bb0); border:2px solid #123A6F; }
+  .hotbar-icon-money { background:radial-gradient(circle at 35% 30%, #ffe97a, #d4a017); border:2px solid #8a6a10; border-radius:50%; }
+  .hotbar-slot.empty { display:none; }
+  .hotbar-count {
+    position:absolute; bottom:1px; right:3px; font-family:var(--font-display); font-weight:800;
+    font-size:clamp(9px,1.3vw,14px); color:#fff;
+    text-shadow:1px 0 0 #000,-1px 0 0 #000,0 1px 0 #000,0 -1px 0 #000;
+  }
+
+  .cinematic {
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    background:linear-gradient(160deg,#fff 0%,var(--blue-light) 50%,#dcecf8 100%);
+    z-index:20; gap:14px; padding:clamp(24px,6vh,48px);
+    transition:opacity 0.6s var(--ease);
+  }
+  .cinematic.hidden { opacity:0; pointer-events:none; }
+  .cin-logo {
     font-family:var(--font-display); font-size:clamp(11px,1.4vw,15px);
     font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
     color:var(--blue); margin-bottom:6px;
   }
-  .year {
-    font-family:var(--font-display); font-size:clamp(56px,10vw,110px);
-    font-weight:800; letter-spacing:-0.03em; line-height:1; color:var(--blue);
-    animation:pulse 3s var(--ease) infinite;
+  .cin-year {
+    font-family:var(--font-display); font-size:clamp(56px,8vw,90px);
+    font-weight:800; letter-spacing:-0.03em; line-height:1;
+    color:var(--blue); animation:yearPulse 3s var(--ease) infinite;
   }
-  @keyframes pulse { 0%,100% { transform:scale(1); color:var(--blue); } 50% { transform:scale(1.03); color:var(--blue-dark); } }
-  .title {
+  @keyframes yearPulse { 0%,100% { transform:scale(1); color:var(--blue); } 50% { transform:scale(1.04); color:var(--blue-dark); } }
+  .cin-title {
     font-family:var(--font-display); font-size:clamp(14px,1.8vw,20px);
-    font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:var(--blue-dark);
+    font-weight:600; letter-spacing:0.15em; text-transform:uppercase;
+    color:var(--blue-dark); text-align:center;
   }
-  .divider { width:48px; height:2px; background:var(--blue); border-radius:1px; margin:2px 0; }
-  .story {
+  .cin-divider { width:48px; height:2px; background:var(--blue); border-radius:1px; margin:2px 0; }
+  .cin-story {
     font-family:var(--font-body); font-size:clamp(11px,1.3vw,14px); font-weight:400;
-    color:var(--text-dim); line-height:1.9; max-width:520px;
+    color:var(--text-dim); text-align:center; line-height:1.9; max-width:560px;
   }
-  .sub {
-    font-family:var(--font-body); font-size:clamp(9px,1vw,12px); font-weight:600;
-    letter-spacing:0.15em; text-transform:uppercase; color:var(--text-dim); margin-top:4px;
-  }
-  .btn {
+  .cin-btn {
     font-family:var(--font-body); font-size:clamp(10px,1.1vw,13px); font-weight:600;
     letter-spacing:0.04em; text-transform:uppercase;
     color:var(--white); background:var(--blue); border:none;
     border-radius:100px; padding:12px 36px; cursor:pointer;
-    transition:all 0.35s var(--ease); margin-top:10px; text-decoration:none; display:inline-block;
+    pointer-events:auto; transition:all 0.35s var(--ease); margin-top:6px;
   }
-  .btn:hover { background:var(--blue-dark); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,87,184,0.25); }
+  .cin-btn:hover { background:var(--blue-dark); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,87,184,0.25); }
+
+  .end-fade {
+    position:absolute; inset:0; z-index:18; background:#000; opacity:0;
+    transition:opacity 1.8s var(--ease); pointer-events:none;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .end-fade.on { opacity:1; }
+  .end-fade-text {
+    font-family:var(--font-display); font-size:clamp(20px,3vw,34px); font-weight:600;
+    letter-spacing:0.08em; color:#fff; opacity:0; transition:opacity 1.6s var(--ease) 0.6s;
+    text-align:center;
+  }
+  .end-fade.on .end-fade-text { opacity:1; }
 </style>
 </head>
 <body>
-  <div class="logo">Qumështorja VITA</div>
-  <div class="year">2010</div>
-  <div class="title">Chapter Two</div>
-  <div class="divider"></div>
-  <div class="story">The little dairy from Istog has grown. New machines, new routes, new faces at the gate — but the same promise as always: fresh milk, trusted every day.<br><br>This chapter is still being written.</div>
-  <div class="sub">Coming soon</div>
-  <a class="btn" href="game.html">Back to Chapter One</a>
+
+<div id="container">
+  <canvas id="game"></canvas>
+
+  <div class="year-flash" id="yearFlash">2010</div>
+
+  <div class="taskbar" id="taskBar">
+    <div class="taskbar-task" id="taskBarText">&mdash;</div>
+  </div>
+
+  <div class="hotbar" id="hotbar">
+    <div class="hotbar-slot empty" id="hotbarSlotMilk"><div class="hotbar-icon hotbar-icon-milk"></div><div class="hotbar-count" id="hotbarMilk">0</div></div>
+    <div class="hotbar-slot empty" id="hotbarSlotPackage"><div class="hotbar-icon hotbar-icon-package"></div><div class="hotbar-count" id="hotbarPackage">0</div></div>
+    <div class="hotbar-slot empty" id="hotbarSlotMoney"><div class="hotbar-icon hotbar-icon-money"></div><div class="hotbar-count" id="hotbarMoney">$0</div></div>
+  </div>
+
+  <div class="dialogue" id="dialogue">
+    <div class="dialogue-name" id="dialogueName"></div>
+    <div class="dialogue-text" id="dialogueText"></div>
+    <div class="dialogue-choices" id="dialogueChoices"></div>
+    <div class="dialogue-continue" id="dialogueContinue">&#9660; Press Enter</div>
+  </div>
+
+  <div class="end-fade" id="endFade"><div class="end-fade-text" id="endFadeText">VITA Now Delivers Across the Region</div></div>
+
+  <div class="cinematic hidden" id="cinematic"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// VITA — CHAPTER TWO: 2010, LEADING THE REGION
+// ═══════════════════════════════════════════
+
+const GW = 480, GH = 270;
+const TILE = 16;
+let scale, containerW, containerH;
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = GW; canvas.height = GH;
+ctx.imageSmoothingEnabled = false;
+ctx.fillStyle = '#000';
+ctx.fillRect(0, 0, GW, GH);
+
+const container = document.getElementById('container');
+function resize() {
+  const ww = window.innerWidth, wh = window.innerHeight;
+  scale = Math.min(Math.floor(ww / GW), Math.floor(wh / GH)) || 1;
+  containerW = GW * scale; containerH = GH * scale;
+  container.style.width = containerW + 'px';
+  container.style.height = containerH + 'px';
+  canvas.style.width = containerW + 'px';
+  canvas.style.height = containerH + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+window.addEventListener('fullscreenchange', resize);
+
+let fullscreenRequested = false;
+function tryFullscreen(){
+  if(fullscreenRequested) return; fullscreenRequested = true;
+  const el = document.documentElement;
+  if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+  else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+}
+
+const $ = s => document.querySelector(s);
+const diaBox = $('#dialogue'), diaText = $('#dialogueText'), diaName = $('#dialogueName');
+const diaChoices = $('#dialogueChoices'), diaContinue = $('#dialogueContinue');
+const yearFlash = $('#yearFlash');
+const taskBar = $('#taskBar'), taskBarText = $('#taskBarText');
+const hotbar = $('#hotbar'), hotbarMilk = $('#hotbarMilk'), hotbarPackage = $('#hotbarPackage'), hotbarMoney = $('#hotbarMoney');
+const hotbarSlotMilk = $('#hotbarSlotMilk'), hotbarSlotPackage = $('#hotbarSlotPackage'), hotbarSlotMoney = $('#hotbarSlotMoney');
+const cinematic = $('#cinematic');
+const endFade = $('#endFade');
+
+// ── AMBIENT AUDIO (procedural — no external assets) ──
+let actx=null, masterGain=null, audioReady=false;
+function initAudio(){
+  if(audioReady) return; audioReady=true;
+  try{
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+    masterGain = actx.createGain(); masterGain.gain.value=0.55; masterGain.connect(actx.destination);
+    startWind(); startAmbientMusic();
+  }catch(e){}
+}
+function unlockAudio(){ if(actx && actx.state==='suspended') actx.resume(); }
+function startWind(){
+  const bufSize = actx.sampleRate*2;
+  const buf = actx.createBuffer(1,bufSize,actx.sampleRate);
+  const data = buf.getChannelData(0);
+  for(let i=0;i<bufSize;i++) data[i]=(Math.random()*2-1);
+  const src = actx.createBufferSource(); src.buffer=buf; src.loop=true;
+  const filter = actx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=300;
+  const g = actx.createGain(); g.gain.value=0.04;
+  src.connect(filter); filter.connect(g); g.connect(masterGain); src.start();
+}
+function footstepSound(){
+  if(!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type='square'; o.frequency.value=85+Math.random()*18;
+  g.gain.setValueAtTime(0.045, actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+0.07);
+  o.connect(g); g.connect(masterGain); o.start(); o.stop(actx.currentTime+0.08);
+}
+function machineSound(){
+  if(!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type='square'; o.frequency.value=180;
+  g.gain.setValueAtTime(0.05,actx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+0.3);
+  o.connect(g); g.connect(masterGain); o.start(); o.stop(actx.currentTime+0.3);
+}
+function chimeSound(){
+  if(!actx) return;
+  [660,880,990].forEach((f,i)=>{
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type='sine'; o.frequency.value=f;
+    const t=actx.currentTime+i*0.08;
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.06,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.5);
+    o.connect(g); g.connect(masterGain); o.start(t); o.stop(t+0.5);
+  });
+}
+function boxSound(){
+  if(!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type='triangle'; o.frequency.setValueAtTime(220,actx.currentTime); o.frequency.exponentialRampToValueAtTime(340,actx.currentTime+0.12);
+  g.gain.setValueAtTime(0.06,actx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+0.16);
+  o.connect(g); g.connect(masterGain); o.start(); o.stop(actx.currentTime+0.18);
+}
+function pickupSound(){
+  if(!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type='sine'; o.frequency.setValueAtTime(520,actx.currentTime); o.frequency.exponentialRampToValueAtTime(880,actx.currentTime+0.1);
+  g.gain.setValueAtTime(0.05,actx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+0.13);
+  o.connect(g); g.connect(masterGain); o.start(); o.stop(actx.currentTime+0.14);
+}
+function startAmbientMusic(){
+  const notes=[261.6,293.7,329.6,392.0,440.0,523.3];
+  function playNote(){
+    if(!actx) return;
+    const f = notes[Math.floor(Math.random()*notes.length)];
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type='sine'; o.frequency.value=f;
+    const t=actx.currentTime;
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.03,t+0.5); g.gain.exponentialRampToValueAtTime(0.0001,t+3.6);
+    o.connect(g); g.connect(masterGain); o.start(t); o.stop(t+3.7);
+    setTimeout(playNote, 1900+Math.random()*2300);
+  }
+  playNote();
+}
+window.addEventListener('keydown', unlockAudio, {once:true});
+window.addEventListener('click', unlockAudio, {once:true});
+
+// ── GAME STATE ──
+const S = {
+  intro:true, playing:false, dialogue:false,
+  dialogueQueue:[], diaCb:null,
+  choiceOptions:null, choiceIndex:0, choiceSpeaker:'', choicesCb:null,
+  px:40, py:0, vx:0, vy:0, facing:1, onGround:false, jumping:false,
+  animFrame:0, animTimer:0,
+  currentTask:0, taskProgress:0, taskTarget:0,
+  collectHold:0, packHold:0,
+  inventory:{milk:0, packages:0}, money:0,
+  scene:'outside', sceneCooldown:0,
+  camX:0, camY:0, particles:[], floatTexts:[], smoke:[], keys:{}, levelComplete:false,
+  time:0,
+};
+
+// ── WORLD ──
+const MAP_W = 90, MAP_H = 28;
+let map = [];
+let worldObjects = [], collectionPoints = [], machineStations = [], packagingStations = [];
+let npcPositions = [], dockTrucks = [], managerNPC = null;
+
+const FACTORY_X = 36*TILE;
+const FACTORY_DOOR_X = FACTORY_X + 14;
+const ROOM_W_TILES = Math.ceil(GW/TILE);
+const INTERIOR_DOOR_X = 34;
+
+function buildWorld() {
+  map = Array.from({length:MAP_H}, () => Array(MAP_W).fill('.'));
+  for (let y=0; y<MAP_H; y++)
+    for (let x=0; x<MAP_W; x++) {
+      if (y >= MAP_H-4) map[y][x] = 'P';
+      if (y >= MAP_H-2) map[y][x] = 'D';
+    }
+
+  worldObjects = [];
+  worldObjects.push({type:'roadsign', x:2*TILE, label:'VITA COLLECTION ROUTE'});
+  worldObjects.push({type:'fence', x:8*TILE});
+  worldObjects.push({type:'tree', variant:'oak', x:11*TILE, seed:0.4});
+  worldObjects.push({type:'tree', variant:'pine', x:19*TILE, seed:1.6});
+  worldObjects.push({type:'fence', x:30*TILE});
+  worldObjects.push({type:'factory', x:FACTORY_X});
+  worldObjects.push({type:'roadsign', x:44*TILE, label:'→ PRISHTINË'});
+  worldObjects.push({type:'roadsign', x:49*TILE, label:'→ TIRANË, ALBANIA'});
+  worldObjects.push({type:'roadsign', x:54*TILE, label:'→ SHKUP, N. MACEDONIA'});
+  worldObjects.push({type:'roadsign', x:59*TILE, label:'→ PODGORICA, MONTENEGRO'});
+  worldObjects.push({type:'roadsign', x:63*TILE, label:'LOADING DOCK'});
+  worldObjects.push({type:'fence', x:64*TILE});
+  worldObjects.push({type:'fence', x:83*TILE});
+
+  collectionPoints = [9,13,17,21,25,29].map(tx=>({x:tx*TILE+8, collected:false}));
+
+  machineStations = [
+    {x:4, y:MAP_H-5.8, variant:'pasteurizer', done:false},
+    {x:9, y:MAP_H-5.8, variant:'tank', done:false},
+    {x:14, y:MAP_H-5.8, variant:'qc', done:false},
+    {x:19, y:MAP_H-5.8, variant:'pasteurizer', done:false},
+    {x:24, y:MAP_H-5.8, variant:'qc', done:false},
+  ];
+  packagingStations = [6,11,16,21,26].map(tx=>({x:tx, y:MAP_H-4.6, done:false}));
+
+  managerNPC = {x:5, y:MAP_H-5.13, dir:1, anim:0, talked:false,
+    pal:{pants:'#2a3a4a',pantsHi:'#3a4a5a',shirt:'#e8edf2',shirtHi:'#f4f8fb',collar:'#0057B8',sleeve:'#d8dee4',skin:'#c9a876',skinHi:'#d8d0c0',hat:'#123A6F'}};
+
+  const workerPal1={pants:'#1c3a5c',pantsHi:'#2a4a6c',shirt:'#2a4a6c',shirtHi:'#3a5c80',collar:'#cfd8df',sleeve:'#1c3a5c',hat:'#8a8f96'};
+  const workerPal2={pants:'#2a2a2a',pantsHi:'#3a3a3a',shirt:'#e8b923',shirtHi:'#f0c94a',collar:'#2a2a2a',sleeve:'#e8b923',hat:'#2a2a2a'};
+  const driverPal={pants:'#3a3a3a',pantsHi:'#4a4a4a',shirt:'#5a5f66',shirtHi:'#6a6f76',collar:'#e8823a',sleeve:'#5a5f66',hat:'#3a3a3a'};
+
+  const destinations=['Prishtinë','Tiranë, Albania','Shkup, N. Macedonia','Podgorica, Montenegro','Prizren'];
+  const driverNames=['Ilir','Mimoza','Fatlum','Arta','Gëzim'];
+  const truckTiles=[66,69,72,75,78];
+
+  npcPositions = [
+    {x:42, y:MAP_H-5.13, dir:1, anim:Math.random()*60, name:'Besnik', pal:workerPal1,
+      greet:()=>['Never seen the line move this fast before Agron took over.','Good to have an extra pair of hands today.'],
+      choices:()=>[
+        {label:'How long have you worked here?', response:['Six years now — since right after we moved out of the old barn.']},
+        {label:'Is the equipment hard to run?', response:["Not once you get the rhythm of it. You'll see."]},
+        {label:'Just saying hi.', response:['Good to see you, mikë.']},
+      ]},
+    {x:40, y:MAP_H-5.13, dir:-1, anim:Math.random()*60, name:'Flora', pal:workerPal2,
+      greet:()=>['Quality checks never stop around here — every batch, every time.','Kosovo, Albania, Macedonia, Montenegro — our trucks go everywhere now.'],
+      choices:()=>[
+        {label:"What's quality control actually check?", response:['Freshness, temperature, the works. Nothing leaves this plant without a clean check.']},
+        {label:'Where do the trucks go?', response:['All over the region these days. Feels like half of Kosovo lives on VITA milk.']},
+        {label:'Just passing through.', response:['Take care out there.']},
+      ]},
+  ];
+  for (let i=0; i<5; i++){
+    npcPositions.push({x:truckTiles[i]+2, y:MAP_H-5.13, dir:-1, anim:Math.random()*60, name:driverNames[i], pal:driverPal,
+      isDriver:true, truckIdx:i, dest:destinations[i], needsLoad:false, loaded:false});
+  }
+
+  dockTrucks = truckTiles.map(tx=>({x:tx*TILE}));
+}
+buildWorld();
+
+// ── TASKS ──
+const TASK_TARGET = {1:6, 2:5, 3:5, 4:5};
+const TASK_LABELS = {
+  0: ()=>'Find the Plant Manager, Agron',
+  1: ()=>`Collect milk from partner farms — hold E (${S.taskProgress}/${TASK_TARGET[1]})`,
+  2: ()=>S.scene==='outside' ? 'Head into the plant — press E at the door' : `Run the equipment & quality checks — press E (${S.taskProgress}/${TASK_TARGET[2]})`,
+  3: ()=>`Package the products — hold E, once each (${S.taskProgress}/${TASK_TARGET[3]})`,
+  4: ()=>S.scene==='factory' ? 'Head back outside — press E at the door' : `Load the VITA trucks — press E on the drivers (${S.taskProgress}/${TASK_TARGET[4]})`,
+};
+function updateTaskBar() {
+  if(!S.playing || S.intro || S.levelComplete){ taskBar.classList.remove('show'); hotbar.classList.remove('show'); return; }
+  const fn = TASK_LABELS[S.currentTask];
+  taskBarText.textContent = fn ? fn() : '';
+  taskBar.classList.add('show');
+  hotbarMilk.textContent = S.inventory.milk;
+  hotbarPackage.textContent = S.inventory.packages;
+  hotbarMoney.textContent = '$'+S.money;
+  hotbarSlotMilk.classList.toggle('empty', S.inventory.milk<=0);
+  hotbarSlotPackage.classList.toggle('empty', S.inventory.packages<=0);
+  hotbarSlotMoney.classList.toggle('empty', S.money<=0);
+  hotbar.classList.add('show');
+}
+
+// ── PLAYER ──
+const PW=14, PH=18, GRAVITY=0.4, SPEED=1.4, JUMP=-4.4;
+
+function drawPlayer(px, py) {
+  const f=S.facing, a=S.animFrame;
+  const walk = Math.floor(a/6)%4;
+  const legOff = walk===1?1:walk===3?-1:0;
+  const armOff = walk===2?1:walk===0?-1:0;
+  const bx = px, by = py;
+
+  ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(bx-2, by+PH-1, PW+4, 3);
+  ctx.fillStyle='#3a2510'; ctx.fillRect(bx+3, by+PH-4+legOff, 4, 4); ctx.fillRect(bx+8, by+PH-4-legOff, 4, 4);
+  ctx.fillStyle='#2a5090'; ctx.fillRect(bx+3, by+PH-8+legOff, 4, 5); ctx.fillRect(bx+8, by+PH-8-legOff, 4, 5);
+  ctx.fillStyle='#0057B8'; ctx.fillRect(bx+2, by+4, 10, 10);
+  ctx.fillStyle='#0068d0'; ctx.fillRect(bx+3, by+7, 8, 2);
+  ctx.fillStyle='#3a2510'; ctx.fillRect(bx+2, by+10, 10, 1);
+  ctx.fillStyle='#f5f2e8'; ctx.fillRect(bx+2, by+1, 10, 4);
+  ctx.fillStyle='#d4a574'; ctx.fillRect(bx, by+4+armOff, 2, 5); ctx.fillRect(bx+PW-2, by+4-armOff, 2, 5);
+  ctx.fillStyle='#d4a574'; ctx.fillRect(bx-1, by+8+armOff, 3, 2); ctx.fillRect(bx+PW-2, by+8-armOff, 3, 2);
+  ctx.fillStyle='#d4a574'; ctx.fillRect(bx+3, by-PH+14, 8, 8);
+  ctx.fillStyle='#3a2510'; ctx.fillRect(bx+3, by-PH+14, 8, 3); ctx.fillRect(bx+2, by-PH+15, 10, 2);
+  const ex = f===1?bx+8:bx+4;
+  ctx.fillStyle='#1a0a00'; ctx.fillRect(ex, by-PH+18, 2, 2);
+  ctx.fillStyle='#8B6914'; ctx.fillRect(bx+1, by-PH+11, 12, 3); ctx.fillRect(bx+3, by-PH+13, 8, 2);
+}
+
+function drawFarmer(sx, sy, dir, anim, pal) {
+  const c = Object.assign({pants:'#4a3520',pantsHi:'#5a4a30',shirt:'#6b4a2e',shirtHi:'#7c5a3a',collar:'#e8ddc8',sleeve:'#c9b896',skin:'#c9a876',skinHi:'#d8d0c0',hat:'#c9a860'}, pal);
+  const bob = Math.sin(anim*0.05)*1;
+  const bx = sx, by = sy + bob;
+  ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(bx-2, by+PH-1, PW+4, 3);
+  ctx.fillStyle=c.pants; ctx.fillRect(bx+3, by+PH-4, 4, 4); ctx.fillRect(bx+8, by+PH-4, 4, 4);
+  ctx.fillStyle=c.pantsHi; ctx.fillRect(bx+3, by+PH-8, 4, 5); ctx.fillRect(bx+8, by+PH-8, 4, 5);
+  ctx.fillStyle=c.shirt; ctx.fillRect(bx+2, by+4, 10, 10);
+  ctx.fillStyle=c.shirtHi; ctx.fillRect(bx+3, by+7, 8, 2);
+  ctx.fillStyle=c.collar; ctx.fillRect(bx+2, by+1, 10, 4);
+  ctx.fillStyle=c.sleeve; ctx.fillRect(bx, by+4, 2, 5); ctx.fillRect(bx+PW-2, by+4, 2, 5);
+  ctx.fillStyle=c.sleeve; ctx.fillRect(bx-1, by+8, 3, 2); ctx.fillRect(bx+PW-2, by+8, 3, 2);
+  ctx.fillStyle=c.skin; ctx.fillRect(bx+3, by-PH+14, 8, 8);
+  ctx.fillStyle=c.skinHi; ctx.fillRect(bx+3, by-PH+14, 8, 2);
+  const ex = dir===1?bx+8:bx+4;
+  ctx.fillStyle='#1a0a00'; ctx.fillRect(ex, by-PH+18, 2, 2);
+  ctx.fillStyle=c.hat; ctx.fillRect(bx, by-PH+11, 14, 2); ctx.fillRect(bx+2, by-PH+9, 10, 3);
+}
+
+// ── VITA CRATE MARKER — bobs gently over drivers who need a load ──
+function drawLoadMarker(sx, sy) {
+  const y = sy + Math.sin(S.time*0.12)*2;
+  ctx.fillStyle='#0057B8'; ctx.fillRect(sx-5, y-7, 10, 10);
+  ctx.fillStyle='#fff'; ctx.fillRect(sx-3, y-5, 6, 2); ctx.fillRect(sx-3, y-1, 6, 2);
+}
+
+// ── ENVIRONMENT DRAWING ──
+function groundShadow(sx, gy, w) {
+  ctx.fillStyle='rgba(20,28,12,0.10)'; ctx.fillRect(sx-w/2-1, gy-4, w+2, 5);
+  ctx.fillStyle='rgba(20,28,12,0.22)'; ctx.fillRect(sx-w/2+2, gy-3, w-4, 4);
+}
+
+function drawTree(sx, sy, v, sway) {
+  sway = sway||0;
+  ctx.fillStyle='#6B4226'; ctx.fillRect(sx-2, sy+8, 4, 16);
+  ctx.fillStyle='#8B5A2E'; ctx.fillRect(sx-1, sy+10, 2, 12);
+  const cx = sx+sway;
+  if (v==='pine') {
+    ctx.fillStyle='#2d5a1e'; ctx.fillRect(cx-10, sy-4, 20, 12);
+    ctx.fillStyle='#3a7028'; ctx.fillRect(cx-8, sy-10, 16, 10);
+    ctx.fillStyle='#4a8535'; ctx.fillRect(cx-5, sy-14, 10, 8);
+  } else {
+    ctx.fillStyle='#3a6a20'; ctx.fillRect(cx-9, sy-2, 18, 18);
+    ctx.fillStyle='#4a8030'; ctx.fillRect(cx-7, sy-4, 14, 16);
+    ctx.fillStyle='#5a903a'; ctx.fillRect(cx-4, sy-6, 8, 12);
+  }
+}
+
+function drawFence(sx, gy) {
+  ctx.fillStyle='rgba(20,25,10,0.15)'; ctx.fillRect(sx-9, gy-1, 18, 2);
+  ctx.fillStyle='#8a6a42'; ctx.fillRect(sx-9, gy-14, 3, 14); ctx.fillRect(sx+6, gy-14, 3, 14);
+  ctx.fillStyle='#a08050'; ctx.fillRect(sx-9, gy-14, 1, 14); ctx.fillRect(sx+6, gy-14, 1, 14);
+  ctx.fillStyle='#7a5c38'; ctx.fillRect(sx-11, gy-11, 22, 3); ctx.fillRect(sx-11, gy-5, 22, 3);
+  ctx.fillStyle='#8a6a42'; ctx.fillRect(sx-11, gy-11, 22, 1); ctx.fillRect(sx-11, gy-5, 22, 1);
+}
+
+function drawRoadSign(sx, gy, label) {
+  groundShadow(sx, gy, 12);
+  ctx.fillStyle='#3a3f45'; ctx.fillRect(sx-2, gy-26, 4, 26);
+  const w = 16 + (label?label.length:0)*4.2;
+  ctx.fillStyle='#0057B8'; ctx.fillRect(sx-w/2, gy-38, w, 15);
+  ctx.fillStyle='#123A6F'; ctx.fillRect(sx-w/2, gy-38, w, 3);
+  ctx.fillStyle='#fff'; ctx.font='6px monospace'; ctx.textAlign='center';
+  ctx.fillText(label||'', sx, gy-28);
+  ctx.textAlign='left';
+}
+
+function drawFactoryExterior(sx, gy) {
+  groundShadow(sx, gy, 130);
+  const wallW=130, wallH=44, wallTop=gy-wallH;
+  ctx.fillStyle='#9aa0a8'; ctx.fillRect(sx-wallW/2, wallTop, wallW, wallH);
+  ctx.fillStyle='#a8aeb6'; ctx.fillRect(sx-wallW/2, wallTop, wallW, 3);
+  ctx.fillStyle='#8a9098';
+  for (let bx=-wallW/2+4; bx<wallW/2-4; bx+=8) ctx.fillRect(sx+bx, wallTop+4, 3, wallH-4);
+  ctx.fillStyle='#5c6a78'; ctx.fillRect(sx-wallW/2-4, wallTop-8, wallW+8, 10);
+  ctx.fillStyle='#4a5764'; ctx.fillRect(sx-wallW/2-4, wallTop-8, wallW+8, 3);
+  ctx.fillStyle='#7a828a'; ctx.fillRect(sx+wallW/2-26, wallTop-46, 12, 46);
+  ctx.fillStyle='#8f969e'; ctx.fillRect(sx+wallW/2-26, wallTop-46, 12, 4);
+  ctx.fillStyle='#0057B8'; ctx.font='bold 14px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('VITA', sx-20, wallTop+22); ctx.textAlign='left';
+  ctx.fillStyle='#3a4046'; ctx.fillRect(sx-wallW/2+12, wallTop+8, 20, 16);
+  ctx.fillStyle='#bfe0f0'; ctx.fillRect(sx-wallW/2+14, wallTop+10, 16, 12);
+  const doorDx = FACTORY_DOOR_X-FACTORY_X;
+  ctx.fillStyle='#2a2e33'; ctx.fillRect(sx+doorDx-12, gy-30, 26, 30);
+  ctx.fillStyle='#565e66'; ctx.fillRect(sx+doorDx-11, gy-29, 24, 28);
+  for (let ry=gy-27; ry<gy-2; ry+=5) { ctx.fillStyle='#454c53'; ctx.fillRect(sx+doorDx-11, ry, 24, 2); }
+  ctx.fillStyle='#e2c94a'; ctx.fillRect(sx+doorDx-11, gy-10, 24, 2);
+}
+
+function drawTruck(sx, gy) {
+  ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(sx-16, gy-1, 36, 3);
+  ctx.fillStyle='#f2f4f6'; ctx.fillRect(sx-14, gy-30, 30, 20);
+  ctx.fillStyle='#0057B8'; ctx.fillRect(sx-14, gy-30, 30, 4);
+  ctx.fillStyle='#123A6F'; ctx.font='bold 6px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('VITA', sx+1, gy-16); ctx.textAlign='left';
+  ctx.fillStyle='#0057B8'; ctx.fillRect(sx+16, gy-20, 12, 10);
+  ctx.fillStyle='#bfe0f0'; ctx.fillRect(sx+18, gy-18, 8, 5);
+  ctx.fillStyle='#123A6F'; ctx.fillRect(sx+16, gy-10, 12, 4);
+  ctx.fillStyle='#20242a'; ctx.fillRect(sx-8, gy-4, 7, 7); ctx.fillRect(sx+18, gy-4, 7, 7);
+  ctx.fillStyle='#555'; ctx.fillRect(sx-6, gy-2, 3, 3); ctx.fillRect(sx+20, gy-2, 3, 3);
+}
+
+function drawCollectionPoint(sx, gy) {
+  groundShadow(sx, gy, 20);
+  ctx.fillStyle='#8a8f96'; ctx.fillRect(sx-9, gy-22, 18, 4);
+  ctx.fillStyle='#c7ccd2'; ctx.fillRect(sx-6, gy-18, 6, 16); ctx.fillRect(sx+2, gy-16, 6, 14);
+  ctx.fillStyle='#e2e6ea'; ctx.fillRect(sx-6, gy-18, 6, 3); ctx.fillRect(sx+2, gy-16, 6, 3);
+  ctx.fillStyle='#0057B8'; ctx.fillRect(sx-9, gy-24, 18, 3);
+  ctx.fillStyle='#fff'; ctx.font='5px monospace'; ctx.textAlign='center';
+  ctx.fillText('MILK', sx, gy-22); ctx.textAlign='left';
+}
+
+function drawTile(t,sx,sy,tx,ty) {
+  const TS=TILE;
+  switch(t) {
+    case 'P': {
+      const shade=(tx+ty)%2===0;
+      ctx.fillStyle= shade?'#3d4249':'#454a51'; ctx.fillRect(sx,sy,TS,TS);
+      ctx.fillStyle='rgba(255,255,255,0.05)'; ctx.fillRect(sx,sy,TS,3);
+      ctx.fillStyle='rgba(0,0,0,0.12)'; ctx.fillRect(sx,sy+TS-2,TS,2);
+      if(((tx%6)+6)%6===0){ ctx.fillStyle='#e8c94a'; ctx.fillRect(sx+6,sy+7,5,2); }
+      break; }
+    case 'D': {
+      const dv=(tx*11+ty*17)%4;
+      ctx.fillStyle=dv===0?'#5a5650':dv===1?'#524e48':'#615d55'; ctx.fillRect(sx,sy,TS,TS);
+      ctx.fillStyle='#4a4640'; ctx.fillRect(sx,sy,TS,4);
+      ctx.fillStyle='rgba(20,20,16,0.18)'; ctx.fillRect(sx,sy+11,TS,2);
+      if((tx+ty)%5===0){ctx.fillStyle='#6a655c';ctx.fillRect(sx+4,sy+8,2,2);}
+      if((tx+ty)%6===3){ctx.fillStyle='#78726a';ctx.fillRect(sx+10,sy+3,2,2);}
+      break; }
+  }
+}
+
+function drawRidge(cx, baseY, amp1, amp2, freq1, freq2, phase, parallax, step, color) {
+  const camOff = cx*parallax;
+  ctx.beginPath();
+  ctx.moveTo(-4, GH+10);
+  for (let sx=-4; sx<=GW+4; sx+=step) {
+    const wx = sx + camOff;
+    const h = baseY - Math.sin((wx+phase)*freq1)*amp1 - Math.sin((wx+phase)*freq2)*amp2;
+    ctx.lineTo(sx, h);
+  }
+  ctx.lineTo(GW+4, GH+10);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+function fogBand(y0, y1, alpha) {
+  const fog = ctx.createLinearGradient(0, y0, 0, y1);
+  fog.addColorStop(0, 'rgba(225,238,236,0)'); fog.addColorStop(0.5, `rgba(225,238,236,${alpha})`); fog.addColorStop(1, 'rgba(225,238,236,0)');
+  ctx.fillStyle=fog; ctx.fillRect(0, y0, GW, y1-y0);
+}
+
+function drawWorld(cx, cy) {
+  const sky = ctx.createLinearGradient(0,0,0,GH);
+  sky.addColorStop(0,'#3f6fae'); sky.addColorStop(0.22,'#6a97cf'); sky.addColorStop(0.4,'#9cc0e2');
+  sky.addColorStop(0.55,'#c8ddec'); sky.addColorStop(0.72,'#dcecdc'); sky.addColorStop(1,'#cdd8cf');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,GW,GH);
+
+  const sunX = 340 - cx*0.05, sunY = 26;
+  ctx.fillStyle='rgba(255,252,235,0.28)'; ctx.fillRect(sunX-12, sunY-12, 28, 28);
+  ctx.fillStyle='#fffdf0'; ctx.fillRect(sunX-6, sunY-6, 14, 14);
+  ctx.fillStyle='#ffffff'; ctx.fillRect(sunX-3, sunY-3, 8, 8);
+  const sunGlow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 220);
+  sunGlow.addColorStop(0, 'rgba(255,248,222,0.18)'); sunGlow.addColorStop(1, 'rgba(255,248,222,0)');
+  ctx.fillStyle=sunGlow; ctx.fillRect(0,0,GW,GH);
+
+  for (let i=0; i<5; i++) {
+    const clX = ((i*130 + S.time*0.08 + 200) % (GW+220)) - 110 - cx*0.1;
+    const clY = 10 + i*12, w = 18 + i*9;
+    ctx.fillStyle='rgba(255,255,255,0.65)'; ctx.fillRect(clX, clY, w, 7);
+    ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fillRect(clX+4, clY-3, w-6, 5);
+    ctx.fillStyle='rgba(255,255,255,0.75)'; ctx.fillRect(clX+2, clY+3, w-4, 3);
+  }
+
+  drawRidge(cx, 98, 18, 12, 0.045, 0.02, 0, 0.05, 6, '#8890b8');
+  fogBand(80, 118, 0.28);
+  drawRidge(cx, 132, 14, 10, 0.05, 0.024, 40, 0.14, 6, '#8aa27c');
+  fogBand(118, 150, 0.2);
+
+  // distant industrial skyline — factories at work on the horizon
+  ctx.fillStyle='#5b6470';
+  for (let mx=-30; mx<GW+30; mx+=46) {
+    const wx = mx + cx*0.24;
+    const bh = 22 + ((Math.sin(wx*0.6)+1)*9);
+    const baseY = 176;
+    ctx.fillRect(mx, baseY-bh, 28, bh);
+    ctx.fillRect(mx+20, baseY-bh-16, 5, 16);
+    if (Math.sin(wx*0.3+S.time*0.01) > 0.4) {
+      ctx.fillStyle='rgba(200,205,210,0.35)'; ctx.fillRect(mx+19, baseY-bh-22, 7, 8); ctx.fillStyle='#5b6470';
+    }
+  }
+  fogBand(150, 182, 0.16);
+
+  // far background trucks — busier roads
+  for (let i=0; i<3; i++) {
+    const tx = ((i*260 + S.time*0.5 + 220) % (GW+320)) - 160 - cx*0.15;
+    const ty = 158 + i*4;
+    ctx.fillStyle='rgba(45,50,58,0.55)'; ctx.fillRect(tx, ty, 15, 6); ctx.fillRect(tx+2, ty-3, 8, 3);
+    ctx.fillStyle='rgba(255,225,150,0.5)'; ctx.fillRect(tx-1, ty+2, 2, 2);
+  }
+
+  const stx=Math.max(0,Math.floor(cx/TILE)-1), etx=Math.min(MAP_W,Math.ceil((cx+GW)/TILE)+1);
+  const sty=Math.max(0,Math.floor(cy/TILE)-1), ety=Math.min(MAP_H,Math.ceil((cy+GH)/TILE)+1);
+  for (let ty=sty; ty<ety; ty++)
+    for (let tx=stx; tx<etx; tx++) {
+      const sx=tx*TILE-cx, sy=ty*TILE-cy+GH-MAP_H*TILE;
+      drawTile(map[ty][tx], sx, sy, tx, ty);
+    }
+
+  const groundSy = GH - 4*TILE - cy;
+
+  if (map[MAP_H-2]) {
+    const seamSy = groundSy + 2*TILE;
+    const strata = ctx.createLinearGradient(0, seamSy, 0, seamSy+2*TILE);
+    strata.addColorStop(0, 'rgba(20,20,18,0.14)'); strata.addColorStop(1, 'rgba(10,10,8,0.3)');
+    ctx.fillStyle = strata; ctx.fillRect(0, seamSy, GW, 2*TILE);
+  }
+
+  for (const obj of worldObjects) {
+    const sx=obj.x-cx;
+    if (sx<-60 || sx>GW+60) continue;
+    if (obj.type==='factory') drawFactoryExterior(sx, groundSy);
+    else if (obj.type==='roadsign') drawRoadSign(sx, groundSy, obj.label);
+    else if (obj.type==='fence') drawFence(sx, groundSy);
+    else if (obj.type==='tree') drawTree(sx, groundSy-24, obj.variant, Math.sin(S.time*0.02+obj.seed)*1.4);
+  }
+
+  if (S.time % 40 === 0) spawnSmoke(FACTORY_X+30, (MAP_H-4)*TILE-86);
+  updateDrawSmoke(cx, cy);
+
+  const groundY = GH - MAP_H*TILE - cy;
+
+  for (const c of collectionPoints) {
+    if (c.collected) continue;
+    const csx = c.x-cx;
+    if (csx<-30 || csx>GW+30) continue;
+    drawCollectionPoint(csx, groundSy);
+  }
+
+  managerNPC.anim++;
+  const mnSX = managerNPC.x*TILE-cx;
+  if (mnSX>-30 && mnSX<GW+30) drawFarmer(mnSX, groundY + managerNPC.y*TILE, managerNPC.dir, managerNPC.anim, managerNPC.pal);
+
+  for (const v of npcPositions) {
+    v.anim++;
+    const vsx = v.x*TILE - cx;
+    if (vsx>-30 && vsx<GW+30) {
+      drawFarmer(vsx, groundY + v.y*TILE, v.dir, v.anim, v.pal);
+      if (v.isDriver && v.needsLoad) drawLoadMarker(vsx+6, groundY + v.y*TILE - 12);
+    }
+  }
+
+  for (const tr of dockTrucks) {
+    const sx = tr.x-cx;
+    if (sx>-60 && sx<GW+60) drawTruck(sx, groundSy);
+  }
+}
+
+// ── FACTORY INTERIOR — small, non-scrolling room. Reuses the outside ground-line math ──
+function drawFactoryInterior() {
+  const groundY = GH - MAP_H*TILE;
+  const floorY = GH - 4*TILE;
+
+  const wallGrad = ctx.createLinearGradient(0,0,0,floorY);
+  wallGrad.addColorStop(0,'#3a4048'); wallGrad.addColorStop(1,'#4c545e');
+  ctx.fillStyle = wallGrad; ctx.fillRect(0,0,GW,floorY);
+  for (let x=0; x<GW; x+=16) {
+    ctx.fillStyle='rgba(255,255,255,0.03)'; ctx.fillRect(x+2,0,10,floorY);
+    ctx.fillStyle='rgba(0,0,0,0.14)'; ctx.fillRect(x,0,2,floorY);
+  }
+
+  ctx.fillStyle='#1c2126'; ctx.fillRect(0,9,GW,7);
+  for (let x=20; x<GW; x+=70) {
+    const flick = 0.85+0.1*Math.sin(S.time*0.05+x);
+    ctx.fillStyle=`rgba(230,240,255,${flick})`; ctx.fillRect(x,11,40,3);
+    const glow = ctx.createRadialGradient(x+20,20,4,x+20,20,50);
+    glow.addColorStop(0, `rgba(230,240,255,${0.18*flick})`); glow.addColorStop(1, 'rgba(230,240,255,0)');
+    ctx.fillStyle=glow; ctx.fillRect(x-20,9,80,floorY-9);
+  }
+
+  ctx.fillStyle='#8a9098'; ctx.fillRect(0, floorY, GW, GH-floorY);
+  ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(0, floorY, GW, 2);
+  for (let x=0; x<GW; x+=24) { ctx.fillStyle='rgba(0,0,0,0.08)'; ctx.fillRect(x, floorY, 1, GH-floorY); }
+
+  const dGlow = ctx.createRadialGradient(INTERIOR_DOOR_X, floorY-14, 2, INTERIOR_DOOR_X, floorY-14, 34);
+  dGlow.addColorStop(0,'rgba(200,225,255,0.32)'); dGlow.addColorStop(1,'rgba(200,225,255,0)');
+  ctx.fillStyle=dGlow; ctx.fillRect(INTERIOR_DOOR_X-34, floorY-48, 68, 48);
+  ctx.fillStyle='#20242a'; ctx.fillRect(INTERIOR_DOOR_X-9, floorY-23, 18, 23);
+  ctx.fillStyle='#3a4046'; ctx.fillRect(INTERIOR_DOOR_X-8, floorY-22, 16, 22);
+  ctx.fillStyle='#cfe0f0'; ctx.fillRect(INTERIOR_DOOR_X+4, floorY-13, 2, 2);
+
+  for (const m of machineStations) drawMachine(m.x*TILE, groundY + m.y*TILE, m.variant, m.done);
+  for (const s of packagingStations) drawPackagingStation(s.x*TILE, groundY + s.y*TILE, s.done);
+
+  const vig = ctx.createRadialGradient(GW/2, floorY*0.55, 50, GW/2, floorY*0.55, 340);
+  vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(0,0,0,0.34)');
+  ctx.fillStyle=vig; ctx.fillRect(0,0,GW,GH);
+}
+
+function drawMachine(cx, cy, variant, done) {
+  if (variant==='tank') {
+    ctx.fillStyle='#c3c8ce'; ctx.fillRect(cx+4, cy+2, 16, 26);
+    ctx.fillStyle='#a8adb3'; ctx.fillRect(cx+4, cy+2, 4, 26);
+    ctx.fillStyle='#e2e6ea'; ctx.fillRect(cx+4, cy, 16, 4);
+    ctx.fillStyle='#0057B8'; ctx.fillRect(cx+8, cy+12, 8, 4);
+  } else if (variant==='pasteurizer') {
+    ctx.fillStyle='#b6bcc2'; ctx.fillRect(cx+2, cy+6, 20, 22);
+    ctx.fillStyle='#8f959b'; ctx.fillRect(cx+2, cy+6, 20, 4);
+    ctx.fillStyle='#7a8288'; ctx.fillRect(cx-2, cy+10, 4, 14); ctx.fillRect(cx+24, cy+10, 4, 14);
+    ctx.fillStyle= (Math.floor(S.time/20)%2===0) ? '#4ad86a' : '#2a8848'; ctx.fillRect(cx+18, cy+10, 3, 3);
+  } else {
+    ctx.fillStyle='#8a8f96'; ctx.fillRect(cx, cy+18, 20, 10);
+    ctx.fillStyle='#3a4048'; ctx.fillRect(cx+2, cy+4, 16, 14);
+    ctx.fillStyle='#7fc8ff'; ctx.fillRect(cx+4, cy+6, 12, 10);
+  }
+  if (done) {
+    ctx.fillStyle='rgba(40,200,90,0.85)'; ctx.fillRect(cx+18, cy-4, 8, 8);
+    ctx.fillStyle='#fff'; ctx.fillRect(cx+21, cy-1, 1, 3); ctx.fillRect(cx+20, cy+1, 3, 1);
+  }
+}
+
+function drawPackagingStation(cx, cy, done) {
+  ctx.fillStyle='#7a828a'; ctx.fillRect(cx, cy+20, 24, 8);
+  ctx.fillStyle='#0057B8'; ctx.fillRect(cx+3, cy+8, 8, 12); ctx.fillRect(cx+13, cy+4, 8, 16);
+  ctx.fillStyle='#fff'; ctx.font='5px monospace'; ctx.textAlign='center';
+  ctx.fillText('V', cx+7, cy+16); ctx.fillText('V', cx+17, cy+14); ctx.textAlign='left';
+  if (done) {
+    ctx.fillStyle='rgba(40,200,90,0.85)'; ctx.fillRect(cx+20, cy-2, 8, 8);
+    ctx.fillStyle='#fff'; ctx.fillRect(cx+23, cy+1, 1, 3); ctx.fillRect(cx+22, cy+3, 3, 1);
+  }
+}
+
+// ── SMOKE (lightweight drift particles) ──
+function spawnSmoke(x,y){ S.smoke.push({x,y,vx:(Math.random()-0.5)*0.15,vy:-0.25-Math.random()*0.15,life:120,size:2}); }
+function updateDrawSmoke(cx,cy){
+  for(let i=S.smoke.length-1;i>=0;i--){
+    const p=S.smoke[i]; p.x+=p.vx; p.y+=p.vy; p.size+=0.02; p.life--;
+    if(p.life<=0){ S.smoke.splice(i,1); continue; }
+    const a=Math.min(0.35,p.life/200);
+    const sx=p.x-cx, sy=p.y-cy+GH-MAP_H*TILE;
+    ctx.fillStyle=`rgba(220,220,220,${a})`; ctx.fillRect(sx-p.size/2, sy-p.size/2, p.size, p.size);
+  }
+}
+
+// ── PARTICLES ──
+function spawnParticles(x,y,c,n) {
+  for(let i=0;i<n;i++) S.particles.push({x,y,vx:(Math.random()-0.5)*3,vy:-Math.random()*4-1,life:25+Math.random()*20,c});
+}
+function spawnFloatText(x,y,text,color) {
+  S.floatTexts.push({x,y,text,color:color||'#fff5d0',life:50,vy:-0.6});
+}
+function updateParticles() {
+  for(let i=S.particles.length-1;i>=0;i--) {
+    const p=S.particles[i]; p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.life--; if(p.life<=0)S.particles.splice(i,1);
+  }
+  for(let i=S.floatTexts.length-1;i>=0;i--){
+    const t=S.floatTexts[i]; t.y+=t.vy; t.life--; if(t.life<=0)S.floatTexts.splice(i,1);
+  }
+}
+function drawParticles() {
+  for(const p of S.particles) {
+    const a=Math.min(1,p.life/15);
+    ctx.fillStyle=p.c.replace('1)',a+')'); ctx.fillRect(p.x-S.camX,p.y-S.camY+GH-MAP_H*TILE,2,2);
+  }
+  ctx.font='8px monospace'; ctx.textAlign='center';
+  for(const t of S.floatTexts) {
+    const a=Math.min(1,t.life/20);
+    ctx.fillStyle = t.color; ctx.globalAlpha=a;
+    ctx.fillText(t.text, t.x-S.camX, t.y-S.camY+GH-MAP_H*TILE);
+    ctx.globalAlpha=1;
+  }
+  ctx.textAlign='left';
+}
+
+// ── DIALOGUE ──
+const DIA_CONTINUE_DEFAULT = diaContinue.innerHTML;
+function showDialogue(texts,speaker,cb) {
+  S.dialogue=true; S.dialogueQueue=Array.isArray(texts)?texts:[texts]; S.diaCb=cb||null;
+  S.choiceOptions=null; diaChoices.classList.remove('active'); diaText.style.display='';
+  diaContinue.innerHTML=DIA_CONTINUE_DEFAULT;
+  diaBox.classList.add('active'); diaName.textContent=speaker||''; diaText.textContent=S.dialogueQueue[0];
+}
+function advanceDialogue() {
+  S.dialogueQueue.shift();
+  if(S.dialogueQueue.length>0) diaText.textContent=S.dialogueQueue[0];
+  else { S.dialogue=false; diaBox.classList.remove('active'); if(S.diaCb){const c=S.diaCb;S.diaCb=null;c();} }
+}
+
+// ── DIALOGUE CHOICES ──
+function showChoices(options, speaker, cb) {
+  S.dialogue=true; S.choiceOptions=options; S.choiceIndex=0; S.choiceSpeaker=speaker||''; S.choicesCb=cb||null;
+  diaBox.classList.add('active'); diaName.textContent=speaker||'';
+  diaText.style.display='none';
+  diaContinue.textContent='▲▼ Choose · Enter Select';
+  diaChoices.classList.add('active');
+  renderChoices();
+}
+function renderChoices() {
+  diaChoices.innerHTML = S.choiceOptions.map((o,i)=>
+    `<div class="dialogue-choice${i===S.choiceIndex?' sel':''}">${i+1}. ${o.label}</div>`).join('');
+}
+function moveChoice(delta) {
+  if(!S.choiceOptions) return;
+  S.choiceIndex = (S.choiceIndex + delta + S.choiceOptions.length) % S.choiceOptions.length;
+  renderChoices();
+}
+function confirmChoice(idx) {
+  if(!S.choiceOptions) return;
+  const opt = S.choiceOptions[idx!==undefined ? idx : S.choiceIndex];
+  if(!opt) return;
+  const speaker = S.choiceSpeaker;
+  const doneCb = S.choicesCb; S.choicesCb=null;
+  S.choiceOptions=null; diaChoices.classList.remove('active'); diaText.style.display='';
+  showDialogue(opt.response, speaker, ()=>{ if(doneCb) doneCb(); });
+}
+
+// ── TASK COMPLETION ──
+function completeTask(idx) {
+  spawnParticles(S.px,S.py,'rgba(255,215,0,1)',25);
+  if(idx===0){
+    showDialogue([
+      "Ah, you're here — good. It's been years since that first summer on the farm.",
+      "We're not a small operation anymore — over 280 people work for VITA now, across the farms and this plant.",
+      "Head down the route and collect milk from our partner farms — I'll meet you back at the plant."
+    ],'Agron',()=>{ S.currentTask=1; S.taskProgress=0; S.taskTarget=TASK_TARGET[1]; updateTaskBar(); });
+  }
+  else if(idx===1){
+    showDialogue([
+      "Good work — that's plenty of milk gathered.",
+      "Every one of those cans comes from one of thousands of partner farmers across Kosovo who supply us daily.",
+      "Head inside the plant — let's get it processed and checked for quality."
+    ],'Agron',()=>{ S.currentTask=2; S.taskProgress=0; S.taskTarget=TASK_TARGET[2]; updateTaskBar(); });
+  }
+  else if(idx===2){
+    showDialogue([
+      "That's the last batch through — pasteurized and quality-checked.",
+      "We've grown past our borders, too — VITA products now reach shelves across the Balkans.",
+      "Now let's get it packaged for delivery."
+    ],'Agron',()=>{ S.currentTask=3; S.taskProgress=0; S.taskTarget=TASK_TARGET[3]; updateTaskBar(); });
+  }
+  else if(idx===3){
+    showDialogue([
+      "All packaged and ready to go.",
+      "And we never stop — new equipment, new quality standards, every single year."
+    ],'Agron',()=>{
+      showChoices([
+        {label:'How many farmers do we work with now?', response:['Thousands, across every region of Kosovo — and still growing every season.']},
+        {label:"What's next for VITA?", response:["More trucks, more routes — Kosovo first, then wherever the road takes us."]},
+        {label:'Ready when you are.', response:["That's the spirit. Let's load the trucks."]},
+      ],'Agron',()=>{
+        S.currentTask=4; S.taskProgress=0; S.taskTarget=TASK_TARGET[4]; assignTruckLoaders(); updateTaskBar();
+      });
+    });
+  }
+  else if(idx===4){
+    S.levelComplete=true;
+    updateTaskBar();
+    startConvoy();
+  }
+}
+
+function assignTruckLoaders(){
+  for(const v of npcPositions) if(v.isDriver) v.needsLoad=true;
+}
+
+// ── UPDATE ──
+function update() {
+  const p=S; if(p.dialogue||p.intro||p.levelComplete)return;
+  p.time++;
+
+  p.vx=0;
+  if(p.keys.ArrowLeft&&!p.keys.ArrowRight){p.vx=-SPEED;p.facing=-1;}
+  if(p.keys.ArrowRight&&!p.keys.ArrowLeft){p.vx=SPEED;p.facing=1;}
+  if((p.keys.ArrowUp||p.keys[' '])&&p.onGround&&!p.jumping){p.vy=JUMP;p.onGround=false;p.jumping=true;}
+  if(!p.keys[' ']&&!p.keys.ArrowUp)p.jumping=false;
+  p.vy+=GRAVITY; p.px+=p.vx; p.py+=p.vy;
+  const worldWTiles = p.scene==='factory' ? ROOM_W_TILES : MAP_W;
+  p.px=Math.max(0,Math.min(worldWTiles*TILE-PW,p.px));
+
+  const groundY=(MAP_H-4)*TILE-PH;
+  if(p.py>=groundY){p.py=groundY;p.vy=0;p.onGround=true;}
+  if(p.py<0){p.py=0;p.vy=0;}
+  if(p.vx!==0){
+    p.animTimer++;
+    if(p.animTimer>4){
+      p.animTimer=0; p.animFrame++;
+      if(p.onGround && p.animFrame%2===0) footstepSound();
+    }
+  } else p.animFrame=0;
+
+  p.camX=p.px-GW/2+PW/2; p.camX=Math.max(0,Math.min(worldWTiles*TILE-GW,p.camX));
+  p.camY=Math.min(0,p.py-GH/2);
+
+  if(p.sceneCooldown>0) p.sceneCooldown--;
+
+  // factory door — press E to step inside / step back out
+  if(p.scene==='outside' && p.sceneCooldown<=0){
+    const near = Math.abs(p.px+PW/2-FACTORY_DOOR_X)<16 && p.onGround;
+    if(near && p.keys['e']){
+      p.keys['e']=false; p.keys['E']=false;
+      p.scene='factory'; p.px=INTERIOR_DOOR_X+18; p.py=groundY; p.vy=0; p.sceneCooldown=20;
+      updateTaskBar();
+    }
+  } else if(p.scene==='factory' && p.sceneCooldown<=0){
+    const near = Math.abs(p.px+PW/2-INTERIOR_DOOR_X)<16 && p.onGround;
+    if(near && p.keys['e']){
+      p.keys['e']=false; p.keys['E']=false;
+      p.scene='outside'; p.px=FACTORY_DOOR_X-7; p.py=groundY; p.vy=0; p.sceneCooldown=20;
+      updateTaskBar();
+    }
+  }
+
+  // meet the plant manager — approaching him starts the story naturally
+  if(p.scene==='outside' && p.currentTask===0 && !managerNPC.talked){
+    const dx=Math.abs(p.px+PW/2-(managerNPC.x*TILE+8)), dy=Math.abs(p.py+PH/2-(managerNPC.y*TILE+8));
+    if(dx<28 && dy<32){ managerNPC.talked=true; completeTask(0); }
+  }
+  // collect milk — hold E next to a roadside collection point
+  if(p.scene==='outside' && p.currentTask===1){
+    const c = collectionPoints.find(c=>!c.collected && Math.abs(p.px+PW/2-c.x)<16 && p.onGround);
+    if(c && p.keys['e']){
+      p.collectHold++;
+      if(p.collectHold>=18){
+        p.collectHold=0; c.collected=true; p.taskProgress++; p.inventory.milk++;
+        spawnParticles(c.x,(MAP_H-4)*TILE-6,'rgba(140,200,255,1)',10); spawnFloatText(c.x,(MAP_H-4)*TILE-20,'+1 milk','#d8f0ff'); pickupSound(); updateTaskBar();
+        if(p.taskProgress>=TASK_TARGET[1]) completeTask(1);
+      }
+    } else p.collectHold=0;
+  } else p.collectHold=0;
+  // run equipment / quality checks — press E next to a station, consumes 1 milk
+  if(p.scene==='factory' && p.currentTask===2){
+    const m = machineStations.find(m=>!m.done && Math.abs(p.px+PW/2-(m.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(m.y*TILE+TILE/2))<28);
+    if(m && p.keys['e']){
+      p.keys['e']=false; p.keys['E']=false;
+      const cx=m.x*TILE+TILE/2, cy=m.y*TILE+TILE/2;
+      if(p.inventory.milk>0){
+        m.done=true; p.inventory.milk--; p.taskProgress++;
+        spawnParticles(cx,cy,'rgba(140,200,255,1)',18); spawnFloatText(cx,cy-20,'-1 milk','#d8f0ff'); machineSound(); updateTaskBar();
+        if(p.taskProgress>=TASK_TARGET[2]) completeTask(2);
+      } else {
+        showDialogue(["No milk left to run through — better collect more from the route."],'You',()=>{});
+      }
+    }
+  }
+  // package the products — hold E next to a packaging station
+  if(p.scene==='factory' && p.currentTask===3){
+    const s = packagingStations.find(s=>!s.done && Math.abs(p.px+PW/2-(s.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(s.y*TILE+TILE/2))<28);
+    if(s && p.keys['e']){
+      p.packHold++;
+      if(p.packHold>=35){
+        p.packHold=0; s.done=true; p.taskProgress++; p.inventory.packages++;
+        const cx=s.x*TILE+TILE/2, cy=s.y*TILE+TILE/2;
+        spawnParticles(cx,cy+10,'rgba(255,255,255,1)',12); spawnFloatText(cx,cy-4,'+1 package','#d8f0ff'); boxSound(); updateTaskBar();
+        if(p.taskProgress>=TASK_TARGET[3]) completeTask(3);
+      }
+    } else p.packHold=0;
+  } else p.packHold=0;
+
+  // workers & drivers — outside, press E near one to talk (drivers load trucks during task 4)
+  if(p.scene==='outside' && p.keys['e']){
+    const v = npcPositions.find(v=>{
+      const vx=v.x*TILE+8, vy=v.y*TILE+8;
+      return Math.abs(p.px+PW/2-vx)<24 && Math.abs(p.py+PH/2-vy)<28;
+    });
+    if(v){
+      p.keys['e']=false; p.keys['E']=false;
+      if(p.currentTask===4 && v.isDriver && v.needsLoad){
+        const vx=v.x*TILE+8, vy=v.y*TILE+8;
+        if(p.inventory.packages>0){
+          p.inventory.packages--; p.money+=150; p.taskProgress++; v.needsLoad=false; v.loaded=true;
+          spawnParticles(vx,vy,'rgba(100,180,255,1)',14); spawnFloatText(vx,vy-18,'+$150','#ffe08a'); chimeSound(); updateTaskBar();
+          showDialogue(['Got a package ready for me?', `Perfect — this one's headed for ${v.dest}.`], v.name, ()=>{
+            if(p.taskProgress>=TASK_TARGET[4]) completeTask(4);
+          });
+        } else {
+          showDialogue(['Got a package ready for me?', "...Nothing yet? Come find me once you've packed one."], v.name, ()=>{});
+        }
+      } else if(v.isDriver && v.loaded){
+        showDialogue(['Thanks again — smooth roads from here.'], v.name, ()=>{});
+      } else if(v.isDriver){
+        showDialogue(['Just waiting on my next load.'], v.name, ()=>{});
+      } else {
+        showDialogue(v.greet(), v.name, ()=>showChoices(v.choices(), v.name));
+      }
+    }
+  }
+}
+
+// ── INTERACT PROMPTS ──
+function drawPrompt(wx, wy, label) {
+  label = label || 'ENTER';
+  const bob = Math.sin(S.time*0.15)*2;
+  const sx = wx-S.camX, sy = wy-S.camY+GH-MAP_H*TILE-26+bob;
+  const w = 10 + label.length*6;
+  ctx.fillStyle='rgba(18,58,111,0.85)'; ctx.fillRect(sx-w/2,sy-7,w,11);
+  ctx.fillStyle='rgba(18,58,111,0.85)'; ctx.fillRect(sx-2,sy+3,4,4);
+  ctx.fillStyle='#fff'; ctx.font='7px monospace'; ctx.textAlign='center';
+  ctx.fillText(label, sx, sy);
+  ctx.textAlign='left';
+}
+function drawHoldRing(wx, wy, frac) {
+  const sx = wx-S.camX, sy = wy-S.camY+GH-MAP_H*TILE-54, r=9;
+  ctx.lineWidth=3; ctx.lineCap='round';
+  ctx.strokeStyle='rgba(18,58,111,0.45)';
+  ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle='#d8f0ff';
+  ctx.beginPath(); ctx.arc(sx,sy,r,-Math.PI/2,-Math.PI/2+frac*Math.PI*2); ctx.stroke();
+  ctx.lineWidth=1; ctx.lineCap='butt';
+}
+function drawPrompts(){
+  if(S.dialogue||S.intro||S.levelComplete) return;
+  const p=S;
+  if(p.scene==='outside' && p.sceneCooldown<=0){
+    if(Math.abs(p.px+PW/2-FACTORY_DOOR_X)<16) drawPrompt(FACTORY_DOOR_X,(MAP_H-4)*TILE-30,'E');
+  }
+  if(p.scene==='factory' && p.sceneCooldown<=0){
+    if(Math.abs(p.px+PW/2-INTERIOR_DOOR_X)<16) drawPrompt(INTERIOR_DOOR_X,(MAP_H-4)*TILE-30,'E');
+  }
+  if(p.scene==='outside' && p.currentTask===1){
+    const c = collectionPoints.find(c=>!c.collected && Math.abs(p.px+PW/2-c.x)<16);
+    if(c){
+      drawPrompt(c.x,(MAP_H-4)*TILE-30,'HOLD E');
+      if(p.collectHold>0) drawHoldRing(c.x,(MAP_H-4)*TILE-40,p.collectHold/18);
+    }
+  }
+  if(p.scene==='factory' && p.currentTask===2){
+    const m = machineStations.find(m=>!m.done && Math.abs(p.px+PW/2-(m.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(m.y*TILE+TILE/2))<28);
+    if(m) drawPrompt(m.x*TILE+TILE/2, m.y*TILE+TILE/2-10, 'E');
+  }
+  if(p.scene==='factory' && p.currentTask===3){
+    const s = packagingStations.find(s=>!s.done && Math.abs(p.px+PW/2-(s.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(s.y*TILE+TILE/2))<28);
+    if(s){
+      const cx=s.x*TILE+TILE/2, cy=s.y*TILE+TILE/2;
+      drawPrompt(cx,cy-10,'HOLD E');
+      if(p.packHold>0) drawHoldRing(cx,cy,p.packHold/35);
+    }
+  }
+  if(p.scene==='outside') for(const v of npcPositions){
+    const vx=v.x*TILE+8, vy=v.y*TILE+8;
+    if(Math.abs(p.px+PW/2-vx)<24 && Math.abs(p.py+PH/2-vy)<28) drawPrompt(vx,vy-16,'E');
+  }
+}
+
+// ── RENDER ──
+function render() {
+  if(S.intro){ requestAnimationFrame(render); return; }
+  ctx.clearRect(0,0,GW,GH);
+  if(convoy){ renderConvoy(); requestAnimationFrame(render); return; }
+  if (S.scene==='factory') drawFactoryInterior(); else drawWorld(S.camX,S.camY);
+  drawPlayer(S.px-S.camX, S.py-S.camY+GH-MAP_H*TILE);
+  drawPrompts();
+  drawParticles();
+  requestAnimationFrame(render);
+}
+
+// ── ENDING: TRUCK CONVOY ──
+let convoy = null;
+function startConvoy(){ convoy = {phase:'rise', t:0}; }
+function updateConvoy(){
+  if(!convoy) return;
+  convoy.t++;
+  if(convoy.phase==='rise' && convoy.t>90){ convoy.phase='drive'; convoy.t=0; }
+  else if(convoy.phase==='drive'){
+    for(let i=0;i<dockTrucks.length;i++){
+      if(convoy.t > i*18) dockTrucks[i].x += 1.1;
+    }
+    const leadX = Math.max(...dockTrucks.map(t=>t.x));
+    if(leadX > MAP_W*TILE+60){ convoy.phase='fade'; convoy.t=0; }
+  }
+  else if(convoy.phase==='fade' && convoy.t===1){
+    endFade.classList.add('on');
+  }
+  else if(convoy.phase==='fade' && convoy.t>150){
+    convoy.phase='panel'; convoy.t=0;
+    endFade.classList.remove('on');
+    showEndPanel();
+  }
+}
+function renderConvoy(){
+  if(!convoy) return;
+  const riseAmt = convoy.phase==='rise' ? Math.min(1,convoy.t/90) : 1;
+  const camY = -riseAmt*60;
+  const leadX = Math.max(...dockTrucks.map(t=>t.x));
+  const camX = Math.max(0, Math.min(MAP_W*TILE-GW, leadX-GW/2));
+  drawWorld(camX,camY);
+  drawParticles();
+}
+function showEndPanel(){
+  cinematic.classList.remove('hidden');
+  cinematic.innerHTML = `<div class="cin-logo">QUMËSHTORJA VITA</div><div class="cin-year" style="font-size:clamp(34px,5vw,52px)">2010</div><div class="cin-title">Chapter Two Complete</div><div class="cin-divider"></div><div class="cin-story">In just a few years, VITA grew from one farmer's herd into a company of over 280 employees, sourcing from thousands of partner farmers across Kosovo.<br><br>Its products now travel across the Balkans — a name people trust, wherever the road leads.<br><br>Trucks dispatched: ${S.taskProgress}/${TASK_TARGET[4]} · Revenue: $${S.money}</div><button class="cin-btn" id="toCh1">Play Chapter One Again</button>`;
+  document.getElementById('toCh1').onclick=()=>{ window.location.href='game.html'; };
+}
+
+// ── INIT ──
+function initGame() {
+  S.px=40; S.py=(MAP_H-4)*TILE-PH; S.vx=0; S.vy=0; S.facing=1; S.onGround=true;
+  S.animFrame=0; S.animTimer=0; S.jumping=false;
+  S.currentTask=0; S.taskProgress=0; S.taskTarget=0;
+  S.collectHold=0; S.packHold=0;
+  S.inventory={milk:0, packages:0}; S.money=0;
+  S.scene='outside'; S.sceneCooldown=0;
+  S.choiceOptions=null; diaChoices.classList.remove('active');
+  S.particles=[]; S.floatTexts=[]; S.smoke=[];
+  S.camX=0; S.camY=0;
+  S.dialogue=false; S.levelComplete=false; S.keys={}; S.time=0;
+  convoy=null;
+  buildWorld();
+  updateTaskBar();
+}
+
+function startGame() {
+  S.playing=true;
+  initGame();
+  showDialogue([
+    "Seven years since that first summer on the farm.",
+    "Let's see how far we've come."
+  ],'You',()=>{});
+}
+
+// ── KEY HANDLING ──
+window.addEventListener('keydown',e=>{
+  S.keys[e.key]=true; S.keys[e.key.toLowerCase()]=true;
+  tryFullscreen();
+  if(S.intro) return;
+  if(S.choiceOptions){
+    if(e.key==='ArrowUp'){e.preventDefault(); moveChoice(-1); return;}
+    if(e.key==='ArrowDown'){e.preventDefault(); moveChoice(1); return;}
+    if(e.key==='Enter'){e.preventDefault(); confirmChoice(); return;}
+    const n = parseInt(e.key,10);
+    if(!isNaN(n) && n>=1 && n<=S.choiceOptions.length){ confirmChoice(n-1); return; }
+    return;
+  }
+  if(e.key==='Enter'){e.preventDefault();if(S.dialogue)advanceDialogue();}
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
+});
+window.addEventListener('keyup',e=>{S.keys[e.key]=false; S.keys[e.key.toLowerCase()]=false; if(e.key===' ')S.jumping=false;});
+
+window.addEventListener('click',()=>{ tryFullscreen(); });
+
+// Touch controls for mobile
+window.addEventListener('touchstart',e=>{e.preventDefault();
+  if(S.intro) return;
+  const t=e.touches[0],rect=canvas.getBoundingClientRect();
+  const rx=(t.clientX-rect.left)/rect.width*GW,ry=(t.clientY-rect.top)/rect.height*GH;
+  if(rx<GW/3)S.keys.ArrowLeft=true;else if(rx>GW*2/3)S.keys.ArrowRight=true;
+  if(ry<GH*0.4)S.keys[' ']=true;if(ry>GH*0.7){S.keys.Enter=true;S.keys['e']=true;S.keys['E']=true;}});
+
+window.addEventListener('touchend',e=>{e.preventDefault();S.keys.ArrowLeft=false;S.keys.ArrowRight=false;S.keys[' ']=false;S.keys.Enter=false;S.keys['e']=false;S.keys['E']=false;});
+
+// ── GAME LOOP ──
+initGame();
+initAudio();
+render();
+setInterval(()=>{ if(S.playing) update(); if(convoy) updateConvoy(); updateParticles(); },1000/60);
+
+// ── 2010 YEAR FLASH → START GAME ──
+requestAnimationFrame(()=>{ yearFlash.classList.add('show'); });
+setTimeout(()=>{ S.intro=false; startGame(); yearFlash.classList.remove('show'); }, 1500);
+setTimeout(()=>{ yearFlash.style.display='none'; }, 2000);
+</script>
 </body>
 </html>
