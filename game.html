@@ -194,6 +194,8 @@
   .hotbar-icon { width:56%; height:68%; image-rendering:pixelated; }
   .hotbar-icon-wheat { background:#e8b923; clip-path: polygon(50% 0%, 78% 22%, 62% 42%, 88% 58%, 68% 74%, 82% 100%, 50% 82%, 18% 100%, 32% 74%, 12% 58%, 38% 42%, 22% 22%); }
   .hotbar-icon-milk { background:linear-gradient(#f4fbff,#cfe8f5); border:2px solid #7fa8c9; clip-path: polygon(30% 0%,70% 0%,70% 16%,92% 32%,92% 100%,8% 100%,8% 32%,30% 16%); }
+  .hotbar-icon-money { background:radial-gradient(circle at 35% 30%, #ffe97a, #d4a017); border:2px solid #8a6a10; border-radius:50%; }
+  .hotbar-slot.empty { display:none; }
   .hotbar-count {
     position:absolute; bottom:1px; right:3px; font-family:var(--font-display); font-weight:800;
     font-size:clamp(9px,1.3vw,14px); color:#fff;
@@ -225,8 +227,9 @@
   </div>
 
   <div class="hotbar" id="hotbar">
-    <div class="hotbar-slot"><div class="hotbar-icon hotbar-icon-wheat"></div><div class="hotbar-count" id="hotbarWheat">0</div></div>
-    <div class="hotbar-slot"><div class="hotbar-icon hotbar-icon-milk"></div><div class="hotbar-count" id="hotbarMilk">0</div></div>
+    <div class="hotbar-slot empty" id="hotbarSlotWheat"><div class="hotbar-icon hotbar-icon-wheat"></div><div class="hotbar-count" id="hotbarWheat">0</div></div>
+    <div class="hotbar-slot empty" id="hotbarSlotMilk"><div class="hotbar-icon hotbar-icon-milk"></div><div class="hotbar-count" id="hotbarMilk">0</div></div>
+    <div class="hotbar-slot empty" id="hotbarSlotMoney"><div class="hotbar-icon hotbar-icon-money"></div><div class="hotbar-count" id="hotbarMoney">$0</div></div>
   </div>
 
   <div class="dialogue" id="dialogue">
@@ -284,7 +287,8 @@ const historyScreen = $('#historyScreen'), historyCard = $('#historyCard'), hist
 const yearFlash = $('#yearFlash');
 const endFade = $('#endFade'), endFadeText = $('#endFadeText');
 const taskBar = $('#taskBar'), taskBarText = $('#taskBarText');
-const hotbar = $('#hotbar'), hotbarWheat = $('#hotbarWheat'), hotbarMilk = $('#hotbarMilk');
+const hotbar = $('#hotbar'), hotbarWheat = $('#hotbarWheat'), hotbarMilk = $('#hotbarMilk'), hotbarMoney = $('#hotbarMoney');
+const hotbarSlotWheat = $('#hotbarSlotWheat'), hotbarSlotMilk = $('#hotbarSlotMilk'), hotbarSlotMoney = $('#hotbarSlotMoney');
 
 // ── AMBIENT AUDIO (procedural — no external assets) ──
 let actx=null, masterGain=null, audioReady=false;
@@ -394,7 +398,7 @@ const S = {
   animFrame:0, animTimer:0,
   currentTask:0, taskProgress:0, taskTarget:0,
   cowFed:false, metFarmer:false, milkHold:0, wheatHold:0, milkReady:false,
-  inventory:{wheat:0, milk:0},
+  inventory:{wheat:0, milk:0}, money:0,
   scene:'outside', sceneCooldown:0,
   camX:0, camY:0, particles:[], floatTexts:[], smoke:[], leaves:[], dust:[], keys:{}, levelComplete:false,
   time:0, villageLife:0, petCooldown:0,
@@ -578,13 +582,13 @@ function buildWorld() {
 buildWorld();
 
 // ── TASKS ──
-const TASK_TARGET = {1:6, 3:3, 4:2};
+const TASK_TARGET = {1:6, 2:5, 3:5, 4:5};
 const TASK_LABELS = {
   0: ()=>'Find and talk to Farmer Hashim',
   1: ()=>`Gather wheat — hold E (${S.taskProgress}/${TASK_TARGET[1]})`,
-  2: ()=>S.scene==='barn' ? 'Feed a cow — press E (needs wheat)' : 'Bring the wheat into the barn — press E at the door',
+  2: ()=>S.scene==='barn' ? `Feed the cows — press E (${S.taskProgress}/${TASK_TARGET[2]})` : 'Bring the wheat into the barn — press E at the door',
   3: ()=>`Milk the cows — hold E, once each (${S.taskProgress}/${TASK_TARGET[3]})`,
-  4: ()=>`Sell milk in the village — press E (${S.taskProgress}/${TASK_TARGET[4]})`,
+  4: ()=>`Sell milk to villagers with a mark — press E (${S.taskProgress}/${TASK_TARGET[4]})`,
 };
 function updateTaskBar() {
   if(!S.playing || S.intro || S.levelComplete){ taskBar.classList.remove('show'); hotbar.classList.remove('show'); return; }
@@ -593,6 +597,10 @@ function updateTaskBar() {
   taskBar.classList.add('show');
   hotbarWheat.textContent = S.inventory.wheat;
   hotbarMilk.textContent = S.inventory.milk;
+  hotbarMoney.textContent = '$'+S.money;
+  hotbarSlotWheat.classList.toggle('empty', S.inventory.wheat<=0);
+  hotbarSlotMilk.classList.toggle('empty', S.inventory.milk<=0);
+  hotbarSlotMoney.classList.toggle('empty', S.money<=0);
   hotbar.classList.add('show');
 }
 
@@ -676,6 +684,13 @@ function drawSheep(cx, cy, a) {
   ctx.fillRect(cx+14, cy+14+(legAnim?0:0), 2, 5);
   ctx.fillStyle='#e8e0d8'; ctx.fillRect(cx, cy+6, 6, 6);
   ctx.fillStyle='#1a0a00'; ctx.fillRect(cx+3, cy+7, 1, 1);
+}
+
+// red "!" marker — bobs gently over villagers who want to buy milk
+function drawMilkMarker(sx, sy) {
+  const y = sy + Math.sin(S.time*0.12)*2;
+  ctx.fillStyle='#d81e2c'; ctx.fillRect(sx-5, y-7, 10, 10); ctx.fillRect(sx-2, y+3, 4, 4);
+  ctx.fillStyle='#fff'; ctx.fillRect(sx-1, y-5, 2, 5); ctx.fillRect(sx-1, y-1, 2, 2);
 }
 
 function drawButterfly(bx, by, wing, hue) {
@@ -1150,7 +1165,10 @@ function drawWorld(cx, cy) {
   for (const v of villagerPositions) {
     v.anim++;
     const vsx = v.x*TILE - cx;
-    if (vsx>-30 && vsx<GW+30) drawFarmer(vsx, groundY + v.y*TILE, v.dir, v.anim, v.pal);
+    if (vsx>-30 && vsx<GW+30) {
+      drawFarmer(vsx, groundY + v.y*TILE, v.dir, v.anim, v.pal);
+      if (v.needsMilk) drawMilkMarker(vsx+6, groundY + v.y*TILE - 12);
+    }
   }
 
   for (const w of wheatItems) {
@@ -1348,14 +1366,18 @@ function completeTask(idx) {
   }
   else if(idx===1){
     S.villageLife=2;
-    showDialogue(['Good, good — that’s plenty wheat. The cows are waiting in the barn — press E at the door to go in, then feed one.'],'Farmer Hashim',()=>{S.currentTask=2;updateTaskBar();});
+    showDialogue(['Good, good — that’s plenty wheat. The cows are waiting in the barn — press E at the door to go in, then feed one.'],'Farmer Hashim',()=>{S.currentTask=2;S.taskProgress=0;updateTaskBar();});
   }
   else if(idx===2){
     S.villageLife=3; S.currentTask=3; S.taskProgress=0; S.taskTarget=TASK_TARGET[3];
     showDialogue(['Good — she\'s got her feed. Now walk up to any cow and hold E to milk her. Each one only gives once, so you\'ll need to visit a few.'],'Farmer Hashim',()=>{S.milkReady=true;updateTaskBar();});
   }
   else if(idx===3){
-    showDialogue(['There we go. Fresh, warm milk — nature’s gift. Head back out through the door and carry the bottles into the village — press E to sell them.'],'Farmer Hashim',()=>{S.currentTask=4;S.taskProgress=0;S.taskTarget=TASK_TARGET[4];updateTaskBar();});
+    showStoryPanel('Sundown','The Herd Is Tended','The last cow has given her milk, and the sun dips low over the hills of Istog. Time to carry it into the village before the light is gone.',()=>{
+      showDialogue(['There we go. Fresh, warm milk — nature’s gift. Head back out through the door — some folks in the village need milk tonight. Look for the ones with a mark over their head.'],'Farmer Hashim',()=>{
+        S.currentTask=4;S.taskProgress=0;S.taskTarget=TASK_TARGET[4];assignMilkBuyers();updateTaskBar();
+      });
+    });
   }
   else if(idx===4){
     S.villageLife=4;
@@ -1386,9 +1408,9 @@ function updateEnding(){
     endFade.classList.remove('on');
     showStoryPanel('2003','The Foundation Is Laid','From farmers like this one, from thousands of families across Kosovo\'s highlands, VITA was born.<br><br>Devolli Group\'s vision — combined with Tetra Pak\'s technology — would soon transform these humble milk deliveries into the largest dairy in the Balkans.<br><br>280 employees. 1,500+ farmers. One promise: Fresh from nature. Trusted every day.<br><br><span style="color:var(--blue);font-weight:700">Level 1 Complete</span><br><span style="font-size:11px;color:var(--text-dim)">VITA — Burim i jetës</span>',
       ()=>{
-        initGame();
         cinematic.classList.remove('hidden');
-        cinematic.innerHTML=`<div class="cin-logo">QUMËSHTORJA VITA</div><div class="cin-year" style="font-size:clamp(34px,5vw,52px)">VITA</div><div class="cin-title">Level 1 Complete</div><div class="cin-divider"></div><div class="cin-story" style="color:var(--blue-dark);font-weight:500">"VITA është qumështi i parë, në Kosovë, i përpunuar me teknologjinë më moderne UHT."<br><br><span style="color:var(--text-dim)">— Me ty u rrita —</span></div><button class="cin-btn" onclick="location.reload()">Play Again</button><div class="cin-sub">Level 2 coming soon…</div>`;
+        cinematic.innerHTML=`<div class="cin-logo">QUMËSHTORJA VITA</div><div class="cin-year" style="font-size:clamp(34px,5vw,52px)">VITA</div><div class="cin-title">Chapter One Complete</div><div class="cin-divider"></div><div class="cin-story" style="color:var(--blue-dark);font-weight:500">"VITA është qumështi i parë, në Kosovë, i përpunuar me teknologjinë më moderne UHT."<br><br><span style="color:var(--text-dim)">— Me ty u rrita —</span><br><br>Milk sold: ${S.taskTarget} · Earned: $${S.money}</div><button class="cin-btn" id="toCh2">Continue to 2010</button>`;
+        document.getElementById('toCh2').onclick=()=>{ window.location.href='2.html'; };
         ending=null;
       });
   }
@@ -1484,28 +1506,30 @@ function update() {
       }
     } else p.wheatHold=0;
   } else p.wheatHold=0;
-  // feed a cow — inside the barn, press E next to any unfed cow, consumes 1 wheat from the inventory
+  // feed a cow — inside the barn, press E next to any unfed cow, consumes 1 wheat from the inventory.
+  // Each of the 5 cows needs feeding individually before the task advances to milking.
   if(p.scene==='barn' && p.currentTask===2){
     const cow = allCows().find(c=>!c.fed && Math.abs(p.px+PW/2-(c.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(c.y*TILE+TILE/2))<28);
     if(cow && p.keys['e']){
       p.keys['e']=false; p.keys['E']=false;
       const cx=cow.x*TILE+TILE/2, cy=cow.y*TILE+TILE/2;
       if(p.inventory.wheat>0){
-        cow.fed=true; p.inventory.wheat--;
+        cow.fed=true; p.inventory.wheat--; p.taskProgress++;
         spawnParticles(cx,cy,'rgba(100,200,100,1)',18); spawnFloatText(cx,cy-20,'-1 wheat','#ffe08a'); cowbellSound(); updateTaskBar();
+        const done = p.taskProgress>=TASK_TARGET[2];
         if(!p.cowFed){
-          p.cowFed=true; p.taskProgress++;
-          showDialogue(['There you go — eat up. Fresh milk will come soon.'],'Farmer Hashim',()=>{completeTask(2);});
-        }
+          p.cowFed=true;
+          showDialogue(['There you go — eat up. Fresh milk will come soon.'],'Farmer Hashim',()=>{ if(done) completeTask(2); });
+        } else if(done) completeTask(2);
       } else {
         showDialogue(["I don't have any wheat to feed her yet — better go gather some outside."],'You',()=>{});
       }
     }
   }
-  // milk — inside the barn, hold E next to any un-milked cow; a ring fills, then a bottle drops into the inventory.
-  // Each cow only gives milk once — move on to a different one after.
+  // milk — inside the barn, hold E next to any fed, un-milked cow; a ring fills, then a bottle drops into the inventory.
+  // Each cow only gives milk once — move on to a different one after, until all 5 have been milked.
   if(p.scene==='barn' && p.currentTask===3 && p.milkReady){
-    const cow = allCows().find(c=>!c.milked && Math.abs(p.px+PW/2-(c.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(c.y*TILE+TILE/2))<28);
+    const cow = allCows().find(c=>c.fed && !c.milked && Math.abs(p.px+PW/2-(c.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(c.y*TILE+TILE/2))<28);
     if(cow && p.keys['e']){
       p.milkHold++;
       if(p.milkHold>=35){
@@ -1516,26 +1540,6 @@ function update() {
       }
     } else p.milkHold=0;
   } else p.milkHold=0;
-  // sell — outside, press E at a village house door, consumes a bottle from the inventory
-  // (h.y is the house's roofline, used for the decorative wave sprite — the door trigger sits at ground level instead)
-  if(p.scene==='outside' && p.currentTask===4){
-    for(const h of deliveryHouses){
-      const hx=h.x*TILE+TILE, hy=(MAP_H-6)*TILE;
-      const near = Math.abs(p.px+PW/2-hx)<22 && Math.abs(p.py+PH/2-hy)<26;
-      if(near && p.keys['e']){
-        p.keys['e']=false; p.keys['E']=false;
-        if(p.inventory.milk>0){
-          p.inventory.milk--; p.taskProgress++;
-          spawnParticles(hx,hy,'rgba(100,180,255,1)',14); chimeSound(); updateTaskBar();
-          showDialogue(['Faleminderit! The milk is fresh and delicious. Your farm is a blessing to this village.'],'Neighbour',()=>{});
-          if(p.taskProgress>=TASK_TARGET[4]) completeTask(4);
-        } else {
-          showDialogue(["You're out of milk to sell — go fetch more from the cow."],'You',()=>{});
-        }
-      }
-    }
-  }
-
   // petting non-task animals — pure delight, no progression. Sheep/chickens outside.
   // Barn cows only join the pettable pool once fully milked — otherwise this steals the E hold from feed/milk every frame.
   if(p.petCooldown>0) p.petCooldown--;
@@ -1548,14 +1552,39 @@ function update() {
     if(near){ p.petCooldown=30; p.keys['e']=false; p.keys['E']=false; spawnParticles(near.x*TILE+8,near.y*TILE,'rgba(255,140,180,1)',8); petSound(); }
   }
 
-  // villager small-talk — outside, press E near a villager to greet them
+  // villager small-talk — outside, press E near a villager to greet them.
+  // Once selling has started, villagers marked with a red ! ask for milk instead of their normal greeting.
   if(p.scene==='outside' && p.keys['e']){
     const v = villagerPositions.find(v=>{
       const vx=v.x*TILE+8, vy=v.y*TILE+8;
       return Math.abs(p.px+PW/2-vx)<24 && Math.abs(p.py+PH/2-vy)<28;
     });
-    if(v){ p.keys['e']=false; p.keys['E']=false; showDialogue(v.greet(), v.name, ()=>showChoices(v.choices(), v.name)); }
+    if(v){
+      p.keys['e']=false; p.keys['E']=false;
+      if(p.currentTask===4 && v.needsMilk){
+        const vx=v.x*TILE+8, vy=v.y*TILE+8;
+        if(p.inventory.milk>0){
+          p.inventory.milk--; p.money+=3; p.taskProgress++;
+          spawnParticles(vx,vy,'rgba(100,180,255,1)',14); spawnFloatText(vx,vy-18,'+$3','#ffe08a'); chimeSound(); updateTaskBar();
+          showDialogue(['Do you have any fresh milk? I need some for the family.','Oh, wonderful — thank you! Here, take this for your trouble.'],v.name,()=>{
+            if(p.taskProgress>=TASK_TARGET[4]) completeTask(4);
+          });
+        } else {
+          showDialogue(['Do you have any fresh milk? I need some for the family.',"...No? Ah well — come back if you find some."],v.name,()=>{});
+        }
+      } else {
+        showDialogue(v.greet(), v.name, ()=>showChoices(v.choices(), v.name));
+      }
+    }
   }
+}
+
+// ── MILK BUYERS — once the herd is milked, a random handful of villagers start wanting milk (red ! marker) ──
+function assignMilkBuyers(){
+  const shuffled = [...villagerPositions].sort(()=>Math.random()-0.5);
+  const count = Math.min(villagerPositions.length, 3 + Math.floor(Math.random()*2));
+  for (const v of villagerPositions) v.needsMilk=false;
+  for (let i=0; i<count; i++) shuffled[i].needsMilk=true;
 }
 
 // ── INTERACT PROMPTS (Zelda-style bubble, replaces HUD) ──
@@ -1600,17 +1629,11 @@ function drawPrompts(){
     if(cow) drawPrompt(cow.x*TILE+TILE/2,cow.y*TILE+TILE/2-10,'E');
   }
   if(p.scene==='barn' && p.currentTask===3 && p.milkReady){
-    const cow = allCows().find(c=>!c.milked && Math.abs(p.px+PW/2-(c.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(c.y*TILE+TILE/2))<28);
+    const cow = allCows().find(c=>c.fed && !c.milked && Math.abs(p.px+PW/2-(c.x*TILE+TILE/2))<28 && Math.abs(p.py+PH/2-(c.y*TILE+TILE/2))<28);
     if(cow){
       const cx=cow.x*TILE+TILE/2, cy=cow.y*TILE+TILE/2;
       drawPrompt(cx,cy-10,'HOLD E');
       if(p.milkHold>0) drawHoldRing(cx,cy,p.milkHold/35);
-    }
-  }
-  if(p.scene==='outside' && p.currentTask===4){
-    for(const h of deliveryHouses){
-      const hx=h.x*TILE+TILE, hy=(MAP_H-6)*TILE;
-      if(Math.abs(p.px+PW/2-hx)<22&&Math.abs(p.py+PH/2-hy)<26) drawPrompt(hx,hy-10,'E');
     }
   }
   if(p.scene==='outside') for(const v of villagerPositions){
@@ -1706,7 +1729,7 @@ function initGame() {
   S.animFrame=0; S.animTimer=0; S.jumping=false;
   S.currentTask=0; S.taskProgress=0; S.taskTarget=0;
   S.cowFed=false; S.milkReady=false; S.milkHold=0; S.wheatHold=0;
-  S.inventory={wheat:0, milk:0};
+  S.inventory={wheat:0, milk:0}; S.money=0;
   S.scene='outside'; S.sceneCooldown=0;
   S.choiceOptions=null; diaChoices.classList.remove('active');
   S.particles=[]; S.floatTexts=[]; S.smoke=[]; S.leaves=[]; S.dust=[];

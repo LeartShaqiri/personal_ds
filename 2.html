@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VITA — Chapter Two</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Manrope:wght@300;400;500;600;700;800&display=swap');
+
+  :root { --blue:#0057B8; --blue-dark:#123A6F; --blue-light:#EAF4FF; --white:#FFF;
+    --text:#123A6F; --text-dim:rgba(18,58,111,0.55);
+    --font-display:'Inter Tight',sans-serif; --font-body:'Manrope',sans-serif;
+    --ease:cubic-bezier(0.19,1,0.22,1); }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; text-align:center; padding:clamp(24px,6vh,48px);
+    font-family:var(--font-body);
+    background:linear-gradient(160deg,#fff 0%,var(--blue-light) 50%,#dcecf8 100%);
+  }
+
+  .logo {
+    font-family:var(--font-display); font-size:clamp(11px,1.4vw,15px);
+    font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--blue); margin-bottom:6px;
+  }
+  .year {
+    font-family:var(--font-display); font-size:clamp(56px,10vw,110px);
+    font-weight:800; letter-spacing:-0.03em; line-height:1; color:var(--blue);
+    animation:pulse 3s var(--ease) infinite;
+  }
+  @keyframes pulse { 0%,100% { transform:scale(1); color:var(--blue); } 50% { transform:scale(1.03); color:var(--blue-dark); } }
+  .title {
+    font-family:var(--font-display); font-size:clamp(14px,1.8vw,20px);
+    font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:var(--blue-dark);
+  }
+  .divider { width:48px; height:2px; background:var(--blue); border-radius:1px; margin:2px 0; }
+  .story {
+    font-family:var(--font-body); font-size:clamp(11px,1.3vw,14px); font-weight:400;
+    color:var(--text-dim); line-height:1.9; max-width:520px;
+  }
+  .sub {
+    font-family:var(--font-body); font-size:clamp(9px,1vw,12px); font-weight:600;
+    letter-spacing:0.15em; text-transform:uppercase; color:var(--text-dim); margin-top:4px;
+  }
+  .btn {
+    font-family:var(--font-body); font-size:clamp(10px,1.1vw,13px); font-weight:600;
+    letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--white); background:var(--blue); border:none;
+    border-radius:100px; padding:12px 36px; cursor:pointer;
+    transition:all 0.35s var(--ease); margin-top:10px; text-decoration:none; display:inline-block;
+  }
+  .btn:hover { background:var(--blue-dark); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,87,184,0.25); }
+</style>
+</head>
+<body>
+  <div class="logo">Qumështorja VITA</div>
+  <div class="year">2010</div>
+  <div class="title">Chapter Two</div>
+  <div class="divider"></div>
+  <div class="story">The little dairy from Istog has grown. New machines, new routes, new faces at the gate — but the same promise as always: fresh milk, trusted every day.<br><br>This chapter is still being written.</div>
+  <div class="sub">Coming soon</div>
+  <a class="btn" href="game.html">Back to Chapter One</a>
+</body>
+</html>
