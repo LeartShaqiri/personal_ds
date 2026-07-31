@@ -21,8 +21,6 @@
   }
 
   #container { position:relative; background:#000; }
-  #container.finale { transition:transform 3s var(--ease); transform:scale(1.18); transform-origin:center center; }
-  #container.finale.zoomed { transform:scale(1); }
 
   canvas { display:block; image-rendering:pixelated; image-rendering:crisp-edges; }
 
@@ -107,62 +105,6 @@
     text-shadow:1px 0 0 #000,-1px 0 0 #000,0 1px 0 #000,0 -1px 0 #000;
   }
 
-  .cinematic {
-    position:absolute; inset:0; display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    background:linear-gradient(160deg,#fff 0%,var(--blue-light) 50%,#dcecf8 100%);
-    z-index:20; gap:14px; padding:clamp(24px,6vh,48px);
-    transition:opacity 0.6s var(--ease);
-  }
-  .cinematic.hidden { opacity:0; pointer-events:none; }
-  .cin-logo {
-    font-family:var(--font-display); font-size:clamp(11px,1.4vw,15px);
-    font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
-    color:var(--blue); margin-bottom:6px;
-  }
-  .cin-year {
-    font-family:var(--font-display); font-size:clamp(56px,8vw,90px);
-    font-weight:800; letter-spacing:-0.03em; line-height:1;
-    color:var(--blue); animation:yearPulse 3s var(--ease) infinite;
-  }
-  @keyframes yearPulse { 0%,100% { transform:scale(1); color:var(--blue); } 50% { transform:scale(1.04); color:var(--blue-dark); } }
-  .cin-title {
-    font-family:var(--font-display); font-size:clamp(14px,1.8vw,20px);
-    font-weight:600; letter-spacing:0.15em; text-transform:uppercase;
-    color:var(--blue-dark); text-align:center;
-  }
-  .cin-divider { width:48px; height:2px; background:var(--blue); border-radius:1px; margin:2px 0; }
-  .journey-chain {
-    font-family:var(--font-display); font-size:clamp(9px,1.1vw,12px); font-weight:700;
-    letter-spacing:0.04em; text-transform:uppercase; color:var(--blue);
-    text-align:center; max-width:580px; line-height:1.9;
-  }
-  .cin-story {
-    font-family:var(--font-body); font-size:clamp(11px,1.3vw,14px); font-weight:400;
-    color:var(--text-dim); text-align:center; line-height:1.9; max-width:560px;
-  }
-  .cin-btn {
-    font-family:var(--font-body); font-size:clamp(10px,1.1vw,13px); font-weight:600;
-    letter-spacing:0.04em; text-transform:uppercase;
-    color:var(--white); background:var(--blue); border:none;
-    border-radius:100px; padding:12px 36px; cursor:pointer;
-    pointer-events:auto; transition:all 0.35s var(--ease); margin-top:6px;
-  }
-  .cin-btn:hover { background:var(--blue-dark); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,87,184,0.25); }
-
-  .end-fade {
-    position:absolute; inset:0; z-index:18; background:#000; opacity:0;
-    transition:opacity 1.8s var(--ease); pointer-events:none;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .end-fade.on { opacity:1; }
-  .end-fade-text {
-    font-family:var(--font-display); font-size:clamp(20px,3vw,34px); font-weight:600;
-    letter-spacing:0.08em; color:#fff; opacity:0; transition:opacity 1.6s var(--ease) 0.6s;
-    text-align:center;
-  }
-  .end-fade.on .end-fade-text { opacity:1; }
-
   .qc-panel {
     position:absolute; inset:0; z-index:22; display:flex; align-items:center; justify-content:center;
     background:rgba(10,20,30,0.55); backdrop-filter:blur(3px);
@@ -231,10 +173,6 @@
     <div class="dialogue-choices" id="dialogueChoices"></div>
     <div class="dialogue-continue" id="dialogueContinue">&#9660; Press Enter</div>
   </div>
-
-  <div class="end-fade" id="endFade"><div class="end-fade-text" id="endFadeText">Home, at last.</div></div>
-
-  <div class="cinematic hidden" id="cinematic"></div>
 
   <div class="qc-panel" id="qcPanel">
     <div class="qc-card">
@@ -310,8 +248,6 @@ const yearFlash = $('#yearFlash');
 const taskBar = $('#taskBar'), taskBarText = $('#taskBarText');
 const hotbar = $('#hotbar'), hotbarBatch = $('#hotbarBatch'), hotbarPackage = $('#hotbarPackage'), hotbarCarton = $('#hotbarCarton'), hotbarMoney = $('#hotbarMoney');
 const hotbarSlotBatch = $('#hotbarSlotBatch'), hotbarSlotPackage = $('#hotbarSlotPackage'), hotbarSlotCarton = $('#hotbarSlotCarton'), hotbarSlotMoney = $('#hotbarSlotMoney');
-const cinematic = $('#cinematic');
-const endFade = $('#endFade');
 const qcPanel = $('#qcPanel'), qcProgress = $('#qcProgress');
 const qcApproveBtn = $('#qcApprove'), qcRejectBtn = $('#qcReject');
 
@@ -436,6 +372,10 @@ const INTERIOR_DOOR_X = 34;
 const LAB_INTERIOR_DOOR_X = 34;
 const HOUSE_X = 84*TILE;
 const HOUSE_DOOR_X = HOUSE_X;
+const HOUSE_INTERIOR_DOOR_X = 34;
+
+// the family's dining table — where the carton actually gets handed over, inside the house
+const familyTable = {x:20, y:MAP_H-5.13};
 
 // the single quality-check machine inside the lab wing
 const qcMachine = {x:15, y:MAP_H-5.8};
@@ -552,7 +492,7 @@ const TASK_LABELS = {
     return 'Head into the plant — press E at the door';
   },
   4: ()=>S.scene==='factory' ? 'Head back outside — press E at the door' : `Load the delivery vans — press E on the drivers (${S.taskProgress}/${TASK_TARGET[4]})`,
-  5: ()=>'Carry the last carton down the road — to the family’s door',
+  5: ()=>S.scene==='house' ? 'Bring the carton to the table — press E' : 'Carry the last carton down the road — to the family’s door',
 };
 function updateTaskBar() {
   if(!S.playing || S.intro || S.levelComplete){ taskBar.classList.remove('show'); hotbar.classList.remove('show'); return; }
@@ -1010,6 +950,153 @@ function drawLabInterior() {
   ctx.fillStyle=vig; ctx.fillRect(0,0,GW,GH);
 }
 
+// ── THE KRASNIQI KITCHEN — green cabinetry, checkered tile giving way to a wood-floored dining room ──
+const MOM_PAL  = {pants:'#c96a86',pantsHi:'#d87a96',shirt:'#c96a86',shirtHi:'#d87a96',collar:'#f2e9d4',sleeve:'#c96a86',skin:'#c9a876',skinHi:'#d8d0c0',hat:'#4a3020'};
+const DAD_PAL  = {pants:'#3a3f45',pantsHi:'#4a4f55',shirt:'#4a6b8a',shirtHi:'#5a7c9c',collar:'#e8edf2',sleeve:'#4a6b8a',skin:'#c9a876',skinHi:'#d8d0c0',hat:'#2a2a2a'};
+const KID_PAL1 = {pants:'#3a4a8a',pantsHi:'#4a5c9c',shirt:'#e8b923',shirtHi:'#f0c94a',collar:'#fff',sleeve:'#e8b923',skin:'#d8b58a',skinHi:'#e0c090',hat:'#5a3a20'};
+const KID_PAL2 = {pants:'#3a4a8a',pantsHi:'#4a5c9c',shirt:'#d8382c',shirtHi:'#e8483c',collar:'#fff',sleeve:'#d8382c',skin:'#d8b58a',skinHi:'#e0c090',hat:'#3a2a1a'};
+
+function drawKid(sx, sy, dir, anim, pal, scale) {
+  scale = scale || 0.62;
+  const pivotX = sx+PW/2, pivotY = sy+PH;
+  ctx.save();
+  ctx.translate(pivotX, pivotY);
+  ctx.scale(scale, scale);
+  ctx.translate(-pivotX, -pivotY);
+  drawFarmer(sx, sy, dir, anim, pal);
+  ctx.restore();
+}
+
+function drawFridge(sx, gy) {
+  groundShadow(sx+16, gy, 34);
+  const w=32, h=52, top=gy-h;
+  ctx.fillStyle='#d8c8a0'; ctx.fillRect(sx, top, w, h);
+  ctx.fillStyle='#e8dcb8'; ctx.fillRect(sx, top, w, 3);
+  ctx.fillStyle='#c2b088'; ctx.fillRect(sx, top+16, w, 2);
+  ctx.fillStyle='#a89468'; ctx.fillRect(sx+w-6, top+5, 3, 6);
+  ctx.fillStyle='#a89468'; ctx.fillRect(sx+w-6, top+24, 3, 14);
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1; ctx.strokeRect(sx,top,w,h);
+}
+
+function drawKitchenCounter(sx, gy, withStove) {
+  const w=54, cabH=24, counterH=5, top=gy-cabH-counterH;
+  ctx.fillStyle='#3f7350'; ctx.fillRect(sx, gy-cabH, w, cabH);
+  ctx.fillStyle='#356045'; ctx.fillRect(sx+4, gy-cabH+4, w/2-8, cabH-10);
+  ctx.fillStyle='#356045'; ctx.fillRect(sx+w/2+4, gy-cabH+4, w/2-8, cabH-10);
+  ctx.fillStyle='#274a34'; ctx.fillRect(sx+w/2-1, gy-cabH+4, 2, cabH-10);
+  ctx.fillStyle='#c7ccd0'; ctx.fillRect(sx-2, gy-cabH-counterH, w+4, counterH);
+  ctx.fillStyle='#dfe3e6'; ctx.fillRect(sx-2, gy-cabH-counterH, w+4, 2);
+  if (withStove) {
+    ctx.fillStyle='#2a2a2a'; ctx.fillRect(sx+8, gy-cabH-counterH-3, w-16, 3);
+    ctx.fillStyle='#1a1a1a'; ctx.fillRect(sx+12, gy-cabH-counterH-2, 6, 1); ctx.fillRect(sx+w-22, gy-cabH-counterH-2, 6, 1);
+    ctx.fillStyle='#9aa0a6'; ctx.fillRect(sx+6, top-30, w-12, 6);
+    ctx.fillStyle='#7a8288';
+    ctx.beginPath();
+    ctx.moveTo(sx+6, top-24); ctx.lineTo(sx+w-6, top-24); ctx.lineTo(sx+w/2+8, top-4); ctx.lineTo(sx+w/2-8, top-4);
+    ctx.closePath(); ctx.fill();
+  }
+}
+
+function drawSinkWindow(sx, gy) {
+  const w=48, cabH=24, counterH=5;
+  ctx.fillStyle='#3f7350'; ctx.fillRect(sx, gy-cabH, w, cabH);
+  ctx.fillStyle='#356045'; ctx.fillRect(sx+4, gy-cabH+4, w-8, cabH-10);
+  ctx.fillStyle='#c7ccd0'; ctx.fillRect(sx-2, gy-cabH-counterH, w+4, counterH);
+  ctx.fillStyle='#8a9096'; ctx.fillRect(sx+8, gy-cabH-counterH-6, w-16, 6);
+  ctx.fillStyle='#b8bec4'; ctx.fillRect(sx+10, gy-cabH-counterH-5, w-20, 4);
+  ctx.fillStyle='#6a7076'; ctx.fillRect(sx+w/2-1, gy-cabH-counterH-14, 2, 8); ctx.fillRect(sx+w/2-1, gy-cabH-counterH-14, 6, 2);
+  const winY = gy-cabH-counterH-44, winH=34, winW=w-4;
+  ctx.fillStyle='#fdf6e3'; ctx.fillRect(sx+2, winY, winW, winH);
+  ctx.strokeStyle='#8a7458'; ctx.lineWidth=2; ctx.strokeRect(sx+2, winY, winW, winH);
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fillRect(sx+2+winW/2-1, winY, 2, winH);
+}
+
+function drawChair(sx, gy) {
+  ctx.fillStyle='#5a3f28'; ctx.fillRect(sx, gy-30, 10, 16);
+  ctx.fillStyle='#3f7350'; ctx.fillRect(sx+1, gy-28, 8, 12);
+  ctx.fillStyle='#6b4a30'; ctx.fillRect(sx-1, gy-14, 12, 3);
+  ctx.fillStyle='#4a3320'; ctx.fillRect(sx, gy-11, 2, 9); ctx.fillRect(sx+8, gy-11, 2, 9);
+}
+
+function drawDiningTable(sx, gy) {
+  groundShadow(sx, gy, 90);
+  const tW=76, tH=8, topY=gy-34;
+  ctx.fillStyle='#5a3f28'; ctx.fillRect(sx-tW/2+8, topY-16, 10, 14); ctx.fillRect(sx+tW/2-18, topY-16, 10, 14);
+  ctx.fillStyle='#3f7350'; ctx.fillRect(sx-tW/2+9, topY-14, 8, 10); ctx.fillRect(sx+tW/2-17, topY-14, 8, 10);
+  drawChair(sx-tW/2-6, gy);
+  drawChair(sx+tW/2-4, gy);
+  ctx.fillStyle='#8a5a30'; ctx.fillRect(sx-tW/2, topY, tW, tH);
+  ctx.fillStyle='#a06f3c'; ctx.fillRect(sx-tW/2, topY, tW, 2);
+  ctx.fillStyle='#6b4522'; ctx.fillRect(sx-tW/2+6, topY+tH, 5, 20); ctx.fillRect(sx+tW/2-11, topY+tH, 5, 20);
+  ctx.fillStyle='#d8382c'; ctx.fillRect(sx-14, topY-5, 12, 5);
+  ctx.fillStyle='#e8b923'; ctx.fillRect(sx-12, topY-6, 8, 2);
+  ctx.fillStyle='#f4f7fa'; ctx.fillRect(sx+6, topY-4, 10, 4);
+  ctx.fillStyle='#0057B8'; ctx.fillRect(sx+18, topY-8, 6, 8);
+  ctx.fillStyle='#fff'; ctx.font='bold 3px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('VITA', sx+21, topY-2); ctx.textAlign='left';
+}
+
+function drawPottedPlant(sx, gy) {
+  groundShadow(sx, gy, 18);
+  ctx.fillStyle='#c9382c'; ctx.fillRect(sx-7, gy-14, 14, 14);
+  ctx.fillStyle='#d8483c'; ctx.fillRect(sx-7, gy-14, 14, 3);
+  ctx.fillStyle='#3f7350'; ctx.fillRect(sx-2, gy-24, 4, 12);
+  ctx.fillStyle='#4a8a52'; ctx.fillRect(sx-8, gy-30, 8, 10); ctx.fillRect(sx+2, gy-32, 8, 12); ctx.fillRect(sx-4, gy-36, 8, 10);
+}
+
+function drawHouseInterior() {
+  const groundY = GH - MAP_H*TILE;
+  const floorY = GH - 4*TILE;
+  const kitchenEnd = 232;
+
+  const wallGrad = ctx.createLinearGradient(0,0,0,floorY);
+  wallGrad.addColorStop(0,'#4e6b52'); wallGrad.addColorStop(1,'#5f7f63');
+  ctx.fillStyle = wallGrad; ctx.fillRect(0,0,GW,floorY);
+  ctx.fillStyle='#425946'; ctx.fillRect(0, floorY-6, GW, 6);
+
+  for (let x=0; x<kitchenEnd; x+=TILE) {
+    const shade = (Math.floor(x/TILE))%2===0;
+    ctx.fillStyle = shade ? '#e7e9ea' : '#cfd3d5';
+    ctx.fillRect(x, floorY, TILE, GH-floorY);
+  }
+  for (let x=kitchenEnd; x<GW; x+=TILE) {
+    const dv=Math.floor(x/TILE)%3;
+    ctx.fillStyle = dv===0?'#a9814f':dv===1?'#b58c58':'#9c7847';
+    ctx.fillRect(x, floorY, TILE, GH-floorY);
+    ctx.fillStyle='rgba(0,0,0,0.08)'; ctx.fillRect(x, floorY, 1, GH-floorY);
+  }
+  ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(kitchenEnd-1, floorY, 2, GH-floorY);
+
+  const rugX=250, rugW=180;
+  ctx.fillStyle='#d8c9a3'; ctx.fillRect(rugX, floorY+3, rugW, GH-floorY-3);
+  ctx.fillStyle='rgba(150,60,50,0.35)'; ctx.fillRect(rugX, floorY+3, rugW, 3);
+  ctx.fillStyle='rgba(150,60,50,0.35)'; ctx.fillRect(rugX, GH-4, rugW, 3);
+
+  drawFridge(50, floorY);
+  drawKitchenCounter(110, floorY, true);
+  drawSinkWindow(180, floorY);
+
+  drawDiningTable(328, floorY);
+  drawPottedPlant(452, floorY);
+
+  const dGlow = ctx.createRadialGradient(HOUSE_INTERIOR_DOOR_X, floorY-14, 2, HOUSE_INTERIOR_DOOR_X, floorY-14, 34);
+  dGlow.addColorStop(0,'rgba(255,224,180,0.32)'); dGlow.addColorStop(1,'rgba(255,224,180,0)');
+  ctx.fillStyle=dGlow; ctx.fillRect(HOUSE_INTERIOR_DOOR_X-34, floorY-48, 68, 48);
+  ctx.fillStyle='#20242a'; ctx.fillRect(HOUSE_INTERIOR_DOOR_X-9, floorY-23, 18, 23);
+  ctx.fillStyle='#5a4530'; ctx.fillRect(HOUSE_INTERIOR_DOOR_X-8, floorY-22, 16, 22);
+  ctx.fillStyle='#ffe9a8'; ctx.fillRect(HOUSE_INTERIOR_DOOR_X+4, floorY-13, 2, 2);
+
+  const famY = groundY+(MAP_H-5.13)*TILE;
+  drawFarmer(280, famY, 1, S.time*0.4, MOM_PAL);
+  drawFarmer(378, famY, -1, S.time*0.4+20, DAD_PAL);
+  drawKid(312, famY, 1, S.time*0.5+10, KID_PAL1, 0.62);
+  drawKid(348, famY, -1, S.time*0.5+35, KID_PAL2, 0.62);
+
+  const vig = ctx.createRadialGradient(GW/2, floorY*0.55, 50, GW/2, floorY*0.55, 340);
+  vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(20,30,10,0.22)');
+  ctx.fillStyle=vig; ctx.fillRect(0,0,GW,GH);
+}
+
 // ── PIPES & TUBES ──
 function drawPipeH(x1, x2, y) {
   ctx.fillStyle='#6a7178'; ctx.fillRect(x1, y-3, x2-x1, 6);
@@ -1320,14 +1407,17 @@ function resolveQC(decision){
 qcApproveBtn.onclick = ()=>resolveQC('approve');
 qcRejectBtn.onclick = ()=>resolveQC('reject');
 
+function enterHouse(){
+  showDialogue(["Oh! Is that from VITA? Come in, come in — right this way."],'Vjollca',()=>{});
+}
+
 function deliverCarton(){
   S.inventory.carton=0; updateTaskBar();
   showDialogue([
-    "Oh! Is that from VITA? Come in, come in — you're just in time for breakfast.",
-    "The kids have been waiting for this all morning."
+    "The kids have been waiting for this all morning.",
+    "Thank you — for this, and for making the trip yourself."
   ],'Vjollca',()=>{
     S.levelComplete=true; updateTaskBar();
-    startFinale();
   });
 }
 
@@ -1342,7 +1432,7 @@ function update() {
   if((p.keys.ArrowUp||p.keys[' '])&&p.onGround&&!p.jumping){p.vy=JUMP;p.onGround=false;p.jumping=true;}
   if(!p.keys[' ']&&!p.keys.ArrowUp)p.jumping=false;
   p.vy+=GRAVITY; p.px+=p.vx; p.py+=p.vy;
-  const worldWTiles = (p.scene==='factory'||p.scene==='lab') ? ROOM_W_TILES : MAP_W;
+  const worldWTiles = (p.scene==='factory'||p.scene==='lab'||p.scene==='house') ? ROOM_W_TILES : MAP_W;
   p.px=Math.max(0,Math.min(worldWTiles*TILE-PW,p.px));
 
   const groundY=(MAP_H-4)*TILE-PH;
@@ -1463,9 +1553,20 @@ function update() {
     }
   }
 
-  // deliver the last carton to the family's door
-  if(p.scene==='outside' && p.currentTask===5 && p.inventory.carton>0){
+  // the family's front door — step inside with the carton
+  if(p.scene==='outside' && p.currentTask===5 && p.inventory.carton>0 && p.sceneCooldown<=0){
     const near = Math.abs(p.px+PW/2-HOUSE_DOOR_X)<16 && p.onGround;
+    if(near && p.keys['e']){
+      p.keys['e']=false; p.keys['E']=false;
+      p.scene='house'; p.px=HOUSE_INTERIOR_DOOR_X+18; p.py=groundY; p.vy=0; p.sceneCooldown=20;
+      updateTaskBar();
+      enterHouse();
+    }
+  }
+
+  // the dining table — hand over the carton
+  if(p.scene==='house' && p.currentTask===5 && p.inventory.carton>0){
+    const near = Math.abs(p.px+PW/2-(familyTable.x*TILE+TILE/2))<32 && Math.abs(p.py+PH/2-(familyTable.y*TILE+TILE/2))<32;
     if(near && p.keys['e']){ p.keys['e']=false; p.keys['E']=false; deliverCarton(); }
   }
 }
@@ -1531,109 +1632,24 @@ function drawPrompts(){
   if(p.scene==='outside' && p.currentTask===5 && p.inventory.carton>0){
     if(Math.abs(p.px+PW/2-HOUSE_DOOR_X)<16) drawPrompt(HOUSE_DOOR_X,(MAP_H-4)*TILE-30,'E');
   }
+  if(p.scene==='house' && p.currentTask===5 && p.inventory.carton>0){
+    const tx=familyTable.x*TILE+TILE/2, ty=familyTable.y*TILE+TILE/2;
+    if(Math.abs(p.px+PW/2-tx)<32 && Math.abs(p.py+PH/2-ty)<32) drawPrompt(tx, ty-24, 'E');
+  }
 }
 
 // ── RENDER ──
 function render() {
   if(S.intro){ requestAnimationFrame(render); return; }
   ctx.clearRect(0,0,GW,GH);
-  if(finale){ renderFinale(); requestAnimationFrame(render); return; }
   if (S.scene==='factory') drawFactoryInterior();
   else if (S.scene==='lab') drawLabInterior();
+  else if (S.scene==='house') drawHouseInterior();
   else drawWorld(S.camX,S.camY);
   drawPlayer(S.px-S.camX, S.py-S.camY+GH-MAP_H*TILE);
   drawPrompts();
   drawParticles();
   requestAnimationFrame(render);
-}
-
-// ── ENDING: THE FAMILY TABLE ──
-let finale = null;
-function startFinale(){
-  finale = {phase:'zoomin', t:0};
-  container.classList.add('finale');
-  requestAnimationFrame(()=>requestAnimationFrame(()=>container.classList.add('zoomed')));
-}
-function updateFinale(){
-  if(!finale) return;
-  finale.t++;
-  if(finale.phase==='zoomin' && finale.t>170){ finale.phase='hold'; finale.t=0; }
-  else if(finale.phase==='hold' && finale.t>60){ finale.phase='fade'; finale.t=0; }
-  else if(finale.phase==='fade' && finale.t===1){ endFade.classList.add('on'); }
-  else if(finale.phase==='fade' && finale.t>150){
-    finale.phase='panel'; finale.t=0;
-    endFade.classList.remove('on');
-    showFinalPanel();
-  }
-}
-function renderFinale(){
-  if(!finale) return;
-  drawFamilyScene(finale.t);
-}
-
-function drawFamilyScene(t) {
-  const grad = ctx.createLinearGradient(0,0,0,GH);
-  grad.addColorStop(0,'#fbe8c8'); grad.addColorStop(0.55,'#f7d9a8'); grad.addColorStop(1,'#e8c088');
-  ctx.fillStyle=grad; ctx.fillRect(0,0,GW,GH);
-
-  const wx=70, wy=40, ww=90, wh=70;
-  ctx.fillStyle='#ffe9b0'; ctx.fillRect(wx,wy,ww,wh);
-  ctx.strokeStyle='#8a7458'; ctx.lineWidth=4; ctx.strokeRect(wx,wy,ww,wh);
-  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fillRect(wx+ww/2-2, wy, 4, wh); ctx.fillRect(wx, wy+wh/2-2, ww, 4);
-  for(let i=0;i<3;i++){
-    const rx = wx+20+i*20;
-    ctx.fillStyle='rgba(255,240,200,0.18)'; ctx.fillRect(rx,0,10,GH);
-  }
-
-  ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(0, GH-70, GW, 70);
-
-  const tX=GW/2, tY=GH-56;
-  ctx.fillStyle='#8a5a30'; ctx.fillRect(tX-90, tY, 180, 12);
-  ctx.fillStyle='#a06f3c'; ctx.fillRect(tX-90, tY, 180, 3);
-  ctx.fillStyle='#6b4522'; ctx.fillRect(tX-84, tY+12, 6, 30); ctx.fillRect(tX+78, tY+12, 6, 30);
-
-  ctx.fillStyle='rgba(0,87,184,0.12)'; ctx.fillRect(tX-90, tY, 180, 4);
-
-  ctx.fillStyle='#f5f2e8'; ctx.fillRect(tX-60, tY-3, 16, 5); ctx.fillRect(tX-4, tY-3, 16, 5); ctx.fillRect(tX+50, tY-3, 16, 5);
-
-  const bob = Math.sin(t*0.05)*1.5;
-  const cx=tX-2, cy=tY-24+bob;
-  ctx.fillStyle='#f4f7fa'; ctx.fillRect(cx-9, cy, 18, 20);
-  ctx.beginPath(); ctx.moveTo(cx-9,cy); ctx.lineTo(cx,cy-9); ctx.lineTo(cx+9,cy); ctx.closePath();
-  ctx.fillStyle='#f4f7fa'; ctx.fill();
-  ctx.fillStyle='#0057B8'; ctx.fillRect(cx-9, cy, 18, 4);
-  ctx.fillStyle='#0057B8'; ctx.font='bold 6px sans-serif'; ctx.textAlign='center';
-  ctx.fillText('VITA', cx, cy+14); ctx.textAlign='left';
-
-  const steamPhase = (t*0.6)%20;
-  ctx.fillStyle=`rgba(255,255,255,${0.4-steamPhase/50})`;
-  ctx.fillRect(cx-8, cy-10-steamPhase, 2, 6);
-
-  drawFamilyMember(tX-140, tY-18+Math.sin(t*0.04)*1, {shirt:'#c96a86',shirtHi:'#d87a96',hat:'#5a4a30',skin:'#c9a876'});
-  drawFamilyMember(tX+96, tY-18+Math.sin(t*0.04+1)*1, {shirt:'#2a4a6b',shirtHi:'#3a5c80',hat:'#3a3a3a',skin:'#c9a876'});
-  drawFamilyMember(tX-20, tY-6+Math.sin(t*0.05+2)*1, {shirt:'#e8b923',shirtHi:'#f0c94a',hat:'#7a4a30',skin:'#d8b58a', scale:0.75});
-
-  const vig = ctx.createRadialGradient(GW/2,GH*0.5,40,GW/2,GH*0.5,320);
-  vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(60,30,0,0.28)');
-  ctx.fillStyle=vig; ctx.fillRect(0,0,GW,GH);
-}
-function drawFamilyMember(sx, sy, pal) {
-  const scale = pal.scale||1;
-  ctx.save(); ctx.translate(sx,sy); ctx.scale(scale,scale); ctx.translate(-sx,-sy);
-  ctx.fillStyle=pal.shirt; ctx.fillRect(sx-6, sy-12, 12, 14);
-  ctx.fillStyle=pal.shirtHi; ctx.fillRect(sx-5, sy-9, 10, 3);
-  ctx.fillStyle=pal.skin; ctx.fillRect(sx-4, sy-24, 8, 8);
-  ctx.fillStyle='#1a0a00'; ctx.fillRect(sx-1, sy-20, 2, 2); ctx.fillRect(sx+2, sy-20, 2, 2);
-  ctx.fillStyle=pal.hat; ctx.fillRect(sx-5, sy-27, 10, 4);
-  ctx.restore();
-}
-
-function showFinalPanel(){
-  container.classList.remove('finale','zoomed');
-  cinematic.classList.remove('hidden');
-  cinematic.innerHTML = `<div class="cin-logo">QUMËSHTORJA VITA</div><div class="cin-year" style="font-size:clamp(34px,5vw,52px)">2026</div><div class="cin-title">Chapter Three Complete</div><div class="cin-divider"></div><div class="journey-chain">Farm → Collection → Quality Testing → Production → Packaging → Distribution → Family Table</div><div class="cin-story">"From one vision in 2003 to a trusted dairy brand serving families across the region — this is the journey of VITA."</div><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button class="cin-btn" id="toCh1">Chapter One</button><button class="cin-btn" id="toCh2">Chapter Two</button></div>`;
-  document.getElementById('toCh1').onclick=()=>{ window.location.href='game.html'; };
-  document.getElementById('toCh2').onclick=()=>{ window.location.href='2.html'; };
 }
 
 // ── INIT ──
@@ -1649,8 +1665,6 @@ function initGame() {
   S.particles=[]; S.floatTexts=[];
   S.camX=0; S.camY=0;
   S.dialogue=false; S.levelComplete=false; S.keys={}; S.time=0;
-  finale=null;
-  container.classList.remove('finale','zoomed');
   buildWorld();
   updateTaskBar();
 }
@@ -1703,7 +1717,7 @@ window.addEventListener('touchend',e=>{e.preventDefault();S.keys.ArrowLeft=false
 initGame();
 initAudio();
 render();
-setInterval(()=>{ if(S.playing) update(); if(finale) updateFinale(); updateParticles(); },1000/60);
+setInterval(()=>{ if(S.playing) update(); updateParticles(); },1000/60);
 
 // ── 2026 YEAR FLASH → START GAME ──
 requestAnimationFrame(()=>{ yearFlash.classList.add('show'); });
