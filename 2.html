@@ -1035,7 +1035,9 @@ function completeTask(idx) {
   else if(idx===4){
     S.levelComplete=true;
     updateTaskBar();
-    startConvoy();
+    yearFlash.textContent='';
+    yearFlash.classList.add('show');
+    setTimeout(()=>{ window.location.href='chapter_3.html'; }, 1500);
   }
 }
 
