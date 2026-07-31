@@ -770,6 +770,22 @@ function drawFactoryInterior() {
     ctx.fillStyle=glow; ctx.fillRect(x-20,9,80,floorY-9);
   }
 
+  // overhead plumbing — ties the ambient machines together, decorative only
+  drawPipeH(140, 340, 26);
+  drawPipeV(140, 20, 126);
+  drawPipeV(340, 20, 126);
+  drawPipeV(33, 20, 50);
+  drawPipeV(435, 20, 50);
+
+  // big steam tanks — background pressure vessels venting steam in a slow loop
+  drawSteamTank(140, 150, 11);
+  drawSteamTank(340, 150, 11);
+
+  // ambient bottling lines — purely decorative, loop forever, only ever visible in here
+  drawMilkLine(20, 58, 66, 3, 0.2, 0.5);
+  drawMilkLine(GW-58, GW-20, 66, 3, 0.2, 0.5);
+  drawMilkLine(84, GW-84, 112, 8, 0.12, 0.3);
+
   ctx.fillStyle='#8a9098'; ctx.fillRect(0, floorY, GW, GH-floorY);
   ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(0, floorY, GW, 2);
   for (let x=0; x<GW; x+=24) { ctx.fillStyle='rgba(0,0,0,0.08)'; ctx.fillRect(x, floorY, 1, GH-floorY); }
@@ -787,6 +803,90 @@ function drawFactoryInterior() {
   const vig = ctx.createRadialGradient(GW/2, floorY*0.55, 50, GW/2, floorY*0.55, 340);
   vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(0,0,0,0.34)');
   ctx.fillStyle=vig; ctx.fillRect(0,0,GW,GH);
+}
+
+// ── AMBIENT BOTTLING LINE — decorative only, loops forever, factory-interior-only ──
+// Empty crates ride the belt, pass under the filler and fill with milk, come out
+// solid white with the VITA mark, then carry on and loop back around empty again.
+function drawMilkLine(x0, x1, gy, count, fillStart, fillEnd) {
+  const beltLen = x1-x0;
+  ctx.fillStyle='#565c64'; ctx.fillRect(x0-6, gy+2, beltLen+12, 4);
+  ctx.fillStyle='#3a3f45'; ctx.fillRect(x0-6, gy+5, beltLen+12, 2);
+  ctx.fillStyle='#454b52'; ctx.fillRect(x0-4, gy+7, 3, 9); ctx.fillRect(x1+1, gy+7, 3, 9);
+
+  const cycle = 360;
+  const basePhase = (S.time % cycle) / cycle;
+  for (let i=0; i<count; i++) {
+    const p = (basePhase + i/count) % 1;
+    const bx = x0 + p*beltLen;
+    let fillFrac=0, full=false;
+    if (p>=fillEnd) { full=true; }
+    else if (p>=fillStart) { fillFrac=(p-fillStart)/(fillEnd-fillStart); }
+    drawMilkBox(bx, gy, fillFrac, full);
+  }
+
+  // filler nozzle, roughly centered over the fill zone
+  const nozzleX = x0 + ((fillStart+fillEnd)/2)*beltLen;
+  ctx.fillStyle='#7a828a'; ctx.fillRect(nozzleX-2, gy-13, 4, 9);
+  ctx.fillStyle='#0057B8'; ctx.fillRect(nozzleX-3, gy-15, 6, 3);
+  const dripT = (S.time*2.4) % 30;
+  if (dripT<18) { ctx.fillStyle='rgba(220,240,255,0.85)'; ctx.fillRect(nozzleX-1, gy-4+dripT*0.4, 2, 3); }
+}
+function drawMilkBox(bx, gy, fillFrac, full) {
+  const w=13, h=12, top=gy-h;
+  if (full) {
+    ctx.fillStyle='#f4f7fa'; ctx.fillRect(bx-w/2, top, w, h);
+    ctx.fillStyle='#0057B8'; ctx.fillRect(bx-w/2, top, w, 2);
+    ctx.fillStyle='#0057B8'; ctx.font='bold 3px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('VITA', bx, top+h-4); ctx.textAlign='left';
+    ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=1; ctx.strokeRect(bx-w/2, top, w, h);
+  } else {
+    ctx.strokeStyle='rgba(255,255,255,0.45)'; ctx.lineWidth=1;
+    ctx.strokeRect(bx-w/2, top, w, h);
+    if (fillFrac>0) {
+      const fh = (h-2)*fillFrac;
+      ctx.fillStyle='rgba(228,240,250,0.85)';
+      ctx.fillRect(bx-w/2+1, gy-1-fh, w-2, fh);
+    }
+  }
+}
+
+// ── PIPES & TUBES — plumbing that ties the ambient machines together ──
+function drawPipeH(x1, x2, y) {
+  ctx.fillStyle='#6a7178'; ctx.fillRect(x1, y-3, x2-x1, 6);
+  ctx.fillStyle='#828a92'; ctx.fillRect(x1, y-3, x2-x1, 2);
+  ctx.fillStyle='#4a5057'; ctx.fillRect(x1-2, y-4, 4, 8); ctx.fillRect(x2-2, y-4, 4, 8);
+}
+function drawPipeV(x, y1, y2) {
+  ctx.fillStyle='#6a7178'; ctx.fillRect(x-3, y1, 6, y2-y1);
+  ctx.fillStyle='#828a92'; ctx.fillRect(x-3, y1, 2, y2-y1);
+  ctx.fillStyle='#4a5057'; ctx.fillRect(x-4, y1-2, 8, 4); ctx.fillRect(x-4, y2-2, 8, 4);
+}
+
+// ── BIG STEAM TANK — a round pressure vessel venting steam, decorative & looping ──
+function drawSteamTank(cx, gy, r) {
+  const h = r*2.2, top = gy-h;
+  groundShadow(cx, gy, r*2.4);
+  ctx.fillStyle='#a8adb3'; ctx.fillRect(cx-r, top, r*0.5, h);
+  ctx.fillStyle='#c3c8ce'; ctx.fillRect(cx-r*0.5, top, r*1.1, h);
+  ctx.fillStyle='#e2e6ea'; ctx.fillRect(cx+r*0.35, top, r*0.3, h);
+  let cy = top;
+  for (const [cw,ch] of [[r*0.9,3],[r*0.7,3],[r*0.45,3],[r*0.2,2]]) { cy-=ch; ctx.fillStyle='#d8dde2'; ctx.fillRect(cx-cw, cy, cw*2, ch); }
+  ctx.fillStyle='#9aa0a6'; ctx.fillRect(cx-r, gy-h*0.68, r*2, 3);
+  ctx.fillStyle='#0057B8'; ctx.fillRect(cx-r, gy-h*0.32, r*2, 4);
+  ctx.fillStyle='#7a828a'; ctx.fillRect(cx-3, cy-8, 6, 8);
+
+  // steam puffs — stateless, derived purely from S.time so it loops forever with no persistent state
+  for (let i=0; i<4; i++) {
+    const seed = (cx*0.17+i*13)%100;
+    const t = (S.time*0.7 + i*24 + seed) % 96;
+    const sy = cy-10-t*0.9;
+    const sx = cx + Math.sin(S.time*0.04+i+seed)*7;
+    const a = Math.max(0, 0.5-(t/96)*0.5);
+    const sz = 3+t*0.06;
+    ctx.fillStyle=`rgba(255,255,255,${a})`;
+    ctx.fillRect(sx-sz/2, sy-sz/2, sz, sz);
+  }
 }
 
 function drawMachine(cx, cy, variant, done) {
