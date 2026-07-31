@@ -321,7 +321,7 @@ const S = {
   collectHold:0, packHold:0,
   inventory:{milk:0, packages:0}, money:0,
   scene:'outside', sceneCooldown:0,
-  camX:0, camY:0, particles:[], floatTexts:[], smoke:[], keys:{}, levelComplete:false,
+  camX:0, camY:0, particles:[], floatTexts:[], keys:{}, levelComplete:false,
   time:0,
 };
 
@@ -346,17 +346,24 @@ function buildWorld() {
 
   worldObjects = [];
   worldObjects.push({type:'roadsign', x:2*TILE, label:'VITA COLLECTION ROUTE'});
-  worldObjects.push({type:'fence', x:8*TILE});
-  worldObjects.push({type:'tree', variant:'oak', x:11*TILE, seed:0.4});
+  worldObjects.push({type:'fence', x:6*TILE});
+  worldObjects.push({type:'fence', x:7.5*TILE});
+  worldObjects.push({type:'tree', variant:'pine', x:9*TILE, seed:0.4});
+  worldObjects.push({type:'tree', variant:'oak', x:12*TILE, seed:1.1});
   worldObjects.push({type:'tree', variant:'pine', x:19*TILE, seed:1.6});
   worldObjects.push({type:'fence', x:30*TILE});
   worldObjects.push({type:'factory', x:FACTORY_X});
-  worldObjects.push({type:'roadsign', x:44*TILE, label:'→ PRISHTINË'});
-  worldObjects.push({type:'roadsign', x:49*TILE, label:'→ TIRANË, ALBANIA'});
-  worldObjects.push({type:'roadsign', x:54*TILE, label:'→ SHKUP, N. MACEDONIA'});
+  worldObjects.push({type:'tree', variant:'pine', x:44*TILE, seed:2.0});
+  worldObjects.push({type:'tree', variant:'pine', x:45.5*TILE, seed:0.7});
+  worldObjects.push({type:'tree', variant:'pine', x:47*TILE, seed:1.4});
+  worldObjects.push({type:'roadsign', x:50*TILE, label:'→ PRISHTINË'});
+  worldObjects.push({type:'roadsign', x:53*TILE, label:'→ TIRANË, ALBANIA'});
+  worldObjects.push({type:'roadsign', x:56*TILE, label:'→ SHKUP, N. MACEDONIA'});
   worldObjects.push({type:'roadsign', x:59*TILE, label:'→ PODGORICA, MONTENEGRO'});
+  worldObjects.push({type:'tree', variant:'pine', x:62*TILE, seed:2.3});
   worldObjects.push({type:'roadsign', x:63*TILE, label:'LOADING DOCK'});
   worldObjects.push({type:'fence', x:64*TILE});
+  worldObjects.push({type:'tree', variant:'pine', x:81*TILE, seed:0.9});
   worldObjects.push({type:'fence', x:83*TILE});
 
   collectionPoints = [9,13,17,21,25,29].map(tx=>({x:tx*TILE+8, collected:false}));
@@ -389,7 +396,7 @@ function buildWorld() {
         {label:'Is the equipment hard to run?', response:["Not once you get the rhythm of it. You'll see."]},
         {label:'Just saying hi.', response:['Good to see you, mikë.']},
       ]},
-    {x:40, y:MAP_H-5.13, dir:-1, anim:Math.random()*60, name:'Flora', pal:workerPal2,
+    {x:41, y:MAP_H-5.13, dir:-1, anim:Math.random()*60, name:'Flora', pal:workerPal2,
       greet:()=>['Quality checks never stop around here — every batch, every time.','Kosovo, Albania, Macedonia, Montenegro — our trucks go everywhere now.'],
       choices:()=>[
         {label:"What's quality control actually check?", response:['Freshness, temperature, the works. Nothing leaves this plant without a clean check.']},
@@ -504,11 +511,13 @@ function drawTree(sx, sy, v, sway) {
 }
 
 function drawFence(sx, gy) {
-  ctx.fillStyle='rgba(20,25,10,0.15)'; ctx.fillRect(sx-9, gy-1, 18, 2);
-  ctx.fillStyle='#8a6a42'; ctx.fillRect(sx-9, gy-14, 3, 14); ctx.fillRect(sx+6, gy-14, 3, 14);
-  ctx.fillStyle='#a08050'; ctx.fillRect(sx-9, gy-14, 1, 14); ctx.fillRect(sx+6, gy-14, 1, 14);
-  ctx.fillStyle='#7a5c38'; ctx.fillRect(sx-11, gy-11, 22, 3); ctx.fillRect(sx-11, gy-5, 22, 3);
-  ctx.fillStyle='#8a6a42'; ctx.fillRect(sx-11, gy-11, 22, 1); ctx.fillRect(sx-11, gy-5, 22, 1);
+  const w=24, h=20;
+  ctx.fillStyle='rgba(10,15,8,0.18)'; ctx.fillRect(sx-w/2, gy-1, w, 2);
+  ctx.fillStyle='#141f16';
+  for (let bx=-w/2; bx<=w/2; bx+=5) ctx.fillRect(sx+bx, gy-h, 2, h);
+  ctx.fillStyle='#1c2a1e';
+  ctx.fillRect(sx-w/2-1, gy-h, w+2, 2);
+  ctx.fillRect(sx-w/2-1, gy-5, w+2, 2);
 }
 
 function drawRoadSign(sx, gy, label) {
@@ -523,25 +532,51 @@ function drawRoadSign(sx, gy, label) {
 }
 
 function drawFactoryExterior(sx, gy) {
-  groundShadow(sx, gy, 130);
-  const wallW=130, wallH=44, wallTop=gy-wallH;
-  ctx.fillStyle='#9aa0a8'; ctx.fillRect(sx-wallW/2, wallTop, wallW, wallH);
-  ctx.fillStyle='#a8aeb6'; ctx.fillRect(sx-wallW/2, wallTop, wallW, 3);
-  ctx.fillStyle='#8a9098';
-  for (let bx=-wallW/2+4; bx<wallW/2-4; bx+=8) ctx.fillRect(sx+bx, wallTop+4, 3, wallH-4);
-  ctx.fillStyle='#5c6a78'; ctx.fillRect(sx-wallW/2-4, wallTop-8, wallW+8, 10);
-  ctx.fillStyle='#4a5764'; ctx.fillRect(sx-wallW/2-4, wallTop-8, wallW+8, 3);
-  ctx.fillStyle='#7a828a'; ctx.fillRect(sx+wallW/2-26, wallTop-46, 12, 46);
-  ctx.fillStyle='#8f969e'; ctx.fillRect(sx+wallW/2-26, wallTop-46, 12, 4);
-  ctx.fillStyle='#0057B8'; ctx.font='bold 14px sans-serif'; ctx.textAlign='center';
-  ctx.fillText('VITA', sx-20, wallTop+22); ctx.textAlign='left';
-  ctx.fillStyle='#3a4046'; ctx.fillRect(sx-wallW/2+12, wallTop+8, 20, 16);
-  ctx.fillStyle='#bfe0f0'; ctx.fillRect(sx-wallW/2+14, wallTop+10, 16, 12);
+  groundShadow(sx+25, gy, 230);
+
+  // paved driveway apron in front of the entrance
+  ctx.fillStyle='#8a8f94'; ctx.fillRect(sx-64, gy-6, 130, 7);
+  ctx.fillStyle='#9a9fa4'; ctx.fillRect(sx-64, gy-6, 130, 2);
+
+  const wallW=140, lowerH=24, upperH=18, wallH=lowerH+upperH, wallTop=gy-wallH;
+
+  // secondary warehouse wing — taller, darker, peeking up behind the main building
+  const whX = sx+34, whW=90, whH=wallH+14, whTop=gy-whH;
+  ctx.fillStyle='#2f333a'; ctx.fillRect(whX-whW/2, whTop, whW, whH);
+  ctx.fillStyle='#20242a'; ctx.fillRect(whX-whW/2-2, whTop-4, whW+4, 5);
+  ctx.fillStyle='#4a5058';
+  for (let wx=-whW/2+6; wx<whW/2-6; wx+=16) ctx.fillRect(whX+wx, whTop+8, 6, 5);
+
+  // main building — dark charcoal lower band, white upper band
+  ctx.fillStyle='#23262d'; ctx.fillRect(sx-wallW/2, wallTop+upperH, wallW, lowerH);
+  ctx.fillStyle='#eef0f2'; ctx.fillRect(sx-wallW/2, wallTop, wallW, upperH);
+  ctx.fillStyle='#ffffff'; ctx.fillRect(sx-wallW/2, wallTop, wallW, 2);
+
+  // windows along the lower dark band
+  ctx.fillStyle='#7fb8e0';
+  for (let wx=-wallW/2+8; wx<wallW/2-8; wx+=14) ctx.fillRect(sx+wx, wallTop+upperH+6, 6, 8);
+
+  // vertical white pillars crossing both bands
+  ctx.fillStyle='#f5f5f2';
+  for (let wx=-wallW/2+2; wx<wallW/2-2; wx+=11) ctx.fillRect(sx+wx, wallTop, 3, wallH);
+
+  // red accent stripes
+  ctx.fillStyle='#c8382c';
+  for (let i=0; i<4; i++) ctx.fillRect(sx+6+i*9, wallTop+upperH+lowerH-11, 4, 10);
+
+  // flat roof cap + small rooftop equipment (no chimney — matches reference)
+  ctx.fillStyle='#c7ccd0'; ctx.fillRect(sx-wallW/2-3, wallTop-4, wallW+6, 5);
+  ctx.fillStyle='#9aa0a6'; ctx.fillRect(sx-20, wallTop-12, 14, 8); ctx.fillRect(sx+30, wallTop-9, 10, 5);
+
+  // VITA wordmark on the white upper band
+  ctx.fillStyle='#0057B8'; ctx.font='bold 11px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('VITA', sx-wallW/2+30, wallTop+13); ctx.textAlign='left';
+
+  // entrance door
   const doorDx = FACTORY_DOOR_X-FACTORY_X;
-  ctx.fillStyle='#2a2e33'; ctx.fillRect(sx+doorDx-12, gy-30, 26, 30);
-  ctx.fillStyle='#565e66'; ctx.fillRect(sx+doorDx-11, gy-29, 24, 28);
-  for (let ry=gy-27; ry<gy-2; ry+=5) { ctx.fillStyle='#454c53'; ctx.fillRect(sx+doorDx-11, ry, 24, 2); }
-  ctx.fillStyle='#e2c94a'; ctx.fillRect(sx+doorDx-11, gy-10, 24, 2);
+  ctx.fillStyle='#15171a'; ctx.fillRect(sx+doorDx-11, gy-24, 24, 24);
+  ctx.fillStyle='#22262b'; ctx.fillRect(sx+doorDx-10, gy-23, 22, 22);
+  ctx.fillStyle='#7fb8e0'; ctx.fillRect(sx+doorDx-6, gy-19, 6, 8); ctx.fillRect(sx+doorDx+2, gy-19, 6, 8);
 }
 
 function drawTruck(sx, gy) {
@@ -608,54 +643,56 @@ function fogBand(y0, y1, alpha) {
   ctx.fillStyle=fog; ctx.fillRect(0, y0, GW, y1-y0);
 }
 
+function drawMountainRocks(cx, baseY, amp1, amp2, freq1, freq2, phase, parallax, color) {
+  const camOff = cx*parallax;
+  ctx.fillStyle = color;
+  for (let sx=-4; sx<=GW+4; sx+=9) {
+    const wx = sx + camOff;
+    const h = baseY - Math.sin((wx+phase)*freq1)*amp1 - Math.sin((wx+phase)*freq2)*amp2;
+    const n = Math.sin(wx*0.7)+Math.sin(wx*1.9+1.3);
+    if (n>0.7) ctx.fillRect(sx-2, h+2, 5, 4);
+  }
+}
+
 function drawWorld(cx, cy) {
   const sky = ctx.createLinearGradient(0,0,0,GH);
-  sky.addColorStop(0,'#3f6fae'); sky.addColorStop(0.22,'#6a97cf'); sky.addColorStop(0.4,'#9cc0e2');
-  sky.addColorStop(0.55,'#c8ddec'); sky.addColorStop(0.72,'#dcecdc'); sky.addColorStop(1,'#cdd8cf');
+  sky.addColorStop(0,'#1c7de0'); sky.addColorStop(0.5,'#2f8fe8'); sky.addColorStop(1,'#5cabef');
   ctx.fillStyle=sky; ctx.fillRect(0,0,GW,GH);
 
-  const sunX = 340 - cx*0.05, sunY = 26;
-  ctx.fillStyle='rgba(255,252,235,0.28)'; ctx.fillRect(sunX-12, sunY-12, 28, 28);
-  ctx.fillStyle='#fffdf0'; ctx.fillRect(sunX-6, sunY-6, 14, 14);
-  ctx.fillStyle='#ffffff'; ctx.fillRect(sunX-3, sunY-3, 8, 8);
-  const sunGlow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 220);
-  sunGlow.addColorStop(0, 'rgba(255,248,222,0.18)'); sunGlow.addColorStop(1, 'rgba(255,248,222,0)');
-  ctx.fillStyle=sunGlow; ctx.fillRect(0,0,GW,GH);
-
-  for (let i=0; i<5; i++) {
-    const clX = ((i*130 + S.time*0.08 + 200) % (GW+220)) - 110 - cx*0.1;
-    const clY = 10 + i*12, w = 18 + i*9;
-    ctx.fillStyle='rgba(255,255,255,0.65)'; ctx.fillRect(clX, clY, w, 7);
-    ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fillRect(clX+4, clY-3, w-6, 5);
-    ctx.fillStyle='rgba(255,255,255,0.75)'; ctx.fillRect(clX+2, clY+3, w-4, 3);
+  // chunky, blocky pixel-clouds
+  for (let i=0; i<3; i++) {
+    const clX = ((i*190 + S.time*0.05 + 200) % (GW+260)) - 130 - cx*0.08;
+    const clY = 6 + i*16, w = 46 + i*10;
+    ctx.fillStyle='#fff';
+    ctx.fillRect(clX, clY, w, 10);
+    ctx.fillRect(clX+8, clY-6, w-18, 8);
+    ctx.fillRect(clX+w*0.45, clY-10, w*0.35, 6);
+    ctx.fillRect(clX+4, clY+8, w-10, 4);
   }
 
-  drawRidge(cx, 98, 18, 12, 0.045, 0.02, 0, 0.05, 6, '#8890b8');
-  fogBand(80, 118, 0.28);
-  drawRidge(cx, 132, 14, 10, 0.05, 0.024, 40, 0.14, 6, '#8aa27c');
-  fogBand(118, 150, 0.2);
+  // big green mountain range, layered for depth, with rocky patches near the ridge line
+  drawRidge(cx, 60, 34, 20, 0.028, 0.014, 0, 0.06, 6, '#5c7a3e');
+  drawMountainRocks(cx, 60, 34, 20, 0.028, 0.014, 0, 0.06, '#8a7a68');
+  drawRidge(cx, 92, 22, 14, 0.04, 0.02, 60, 0.13, 6, '#4a6a30');
+  fogBand(60, 130, 0.12);
+  drawRidge(cx, 128, 14, 8, 0.05, 0.026, 20, 0.24, 5, '#3d5c28');
+  fogBand(112, 148, 0.14);
 
-  // distant industrial skyline — factories at work on the horizon
-  ctx.fillStyle='#5b6470';
-  for (let mx=-30; mx<GW+30; mx+=46) {
-    const wx = mx + cx*0.24;
-    const bh = 22 + ((Math.sin(wx*0.6)+1)*9);
-    const baseY = 176;
-    ctx.fillRect(mx, baseY-bh, 28, bh);
-    ctx.fillRect(mx+20, baseY-bh-16, 5, 16);
-    if (Math.sin(wx*0.3+S.time*0.01) > 0.4) {
-      ctx.fillStyle='rgba(200,205,210,0.35)'; ctx.fillRect(mx+19, baseY-bh-22, 7, 8); ctx.fillStyle='#5b6470';
+  // small distant building strip, far along the horizon
+  ctx.fillStyle='#9aa0a6';
+  for (let bx=0; bx<5; bx++) {
+    const wx = 63*TILE + bx*22 - cx;
+    if (wx>-40 && wx<GW+40) {
+      ctx.fillRect(wx, 172, 18, 10);
+      ctx.fillStyle='#7fb8e0'; ctx.fillRect(wx+3, 175, 3, 3); ctx.fillRect(wx+10, 175, 3, 3);
+      ctx.fillStyle='#9aa0a6';
     }
   }
-  fogBand(150, 182, 0.16);
+  fogBand(150, 178, 0.12);
 
-  // far background trucks — busier roads
-  for (let i=0; i<3; i++) {
-    const tx = ((i*260 + S.time*0.5 + 220) % (GW+320)) - 160 - cx*0.15;
-    const ty = 158 + i*4;
-    ctx.fillStyle='rgba(45,50,58,0.55)'; ctx.fillRect(tx, ty, 15, 6); ctx.fillRect(tx+2, ty-3, 8, 3);
-    ctx.fillStyle='rgba(255,225,150,0.5)'; ctx.fillRect(tx-1, ty+2, 2, 2);
-  }
+  // bright rolling lawn leading from the mountains down to the road
+  drawRidge(cx, 200, 5, 3, 0.07, 0.035, 30, 0.42, 5, '#5aab3e');
+  fogBand(180, 206, 0.1);
 
   const stx=Math.max(0,Math.floor(cx/TILE)-1), etx=Math.min(MAP_W,Math.ceil((cx+GW)/TILE)+1);
   const sty=Math.max(0,Math.floor(cy/TILE)-1), ety=Math.min(MAP_H,Math.ceil((cy+GH)/TILE)+1);
@@ -682,9 +719,6 @@ function drawWorld(cx, cy) {
     else if (obj.type==='fence') drawFence(sx, groundSy);
     else if (obj.type==='tree') drawTree(sx, groundSy-24, obj.variant, Math.sin(S.time*0.02+obj.seed)*1.4);
   }
-
-  if (S.time % 40 === 0) spawnSmoke(FACTORY_X+30, (MAP_H-4)*TILE-86);
-  updateDrawSmoke(cx, cy);
 
   const groundY = GH - MAP_H*TILE - cy;
 
@@ -785,18 +819,6 @@ function drawPackagingStation(cx, cy, done) {
   if (done) {
     ctx.fillStyle='rgba(40,200,90,0.85)'; ctx.fillRect(cx+20, cy-2, 8, 8);
     ctx.fillStyle='#fff'; ctx.fillRect(cx+23, cy+1, 1, 3); ctx.fillRect(cx+22, cy+3, 3, 1);
-  }
-}
-
-// ── SMOKE (lightweight drift particles) ──
-function spawnSmoke(x,y){ S.smoke.push({x,y,vx:(Math.random()-0.5)*0.15,vy:-0.25-Math.random()*0.15,life:120,size:2}); }
-function updateDrawSmoke(cx,cy){
-  for(let i=S.smoke.length-1;i>=0;i--){
-    const p=S.smoke[i]; p.x+=p.vx; p.y+=p.vy; p.size+=0.02; p.life--;
-    if(p.life<=0){ S.smoke.splice(i,1); continue; }
-    const a=Math.min(0.35,p.life/200);
-    const sx=p.x-cx, sy=p.y-cy+GH-MAP_H*TILE;
-    ctx.fillStyle=`rgba(220,220,220,${a})`; ctx.fillRect(sx-p.size/2, sy-p.size/2, p.size, p.size);
   }
 }
 
@@ -1158,7 +1180,7 @@ function initGame() {
   S.inventory={milk:0, packages:0}; S.money=0;
   S.scene='outside'; S.sceneCooldown=0;
   S.choiceOptions=null; diaChoices.classList.remove('active');
-  S.particles=[]; S.floatTexts=[]; S.smoke=[];
+  S.particles=[]; S.floatTexts=[];
   S.camX=0; S.camY=0;
   S.dialogue=false; S.levelComplete=false; S.keys={}; S.time=0;
   convoy=null;
